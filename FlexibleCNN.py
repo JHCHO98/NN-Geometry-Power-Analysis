@@ -87,6 +87,7 @@ class FlexibleCNN(nn.Module):
 
 # ================== 2. 학습 설정 ==================
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {DEVICE}")
 EPOCHS = 50
 BATCH_SIZE = 128
 LR = 0.001
@@ -109,7 +110,9 @@ transform_test = transforms.Compose([
 trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
 trainloader = DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2, pin_memory=True)
 testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
-testloader = DataLoader(testset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
+testloader = DataLoader(testset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)\
+
+print('✅ 데이터 로딩 완료!')
 
 def train_one_epoch(model, loader, criterion, optimizer):
     model.train()
