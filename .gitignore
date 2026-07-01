@@ -4,4 +4,5 @@
 **/*.pth
 data_cache/
 data/
+checkpoints/
 data_cifar10/
