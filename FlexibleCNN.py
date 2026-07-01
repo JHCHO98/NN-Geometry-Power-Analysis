@@ -1,9 +1,9 @@
+from load_data import get_dataloaders
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
 import os
 import time
 import json
@@ -107,10 +107,8 @@ transform_test = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 ])
-trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
-trainloader = DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2, pin_memory=True)
-testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
-testloader = DataLoader(testset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)\
+
+trainloader,testloader = get_dataloaders(batch_size=BATCH_SIZE)
 
 print('✅ 데이터 로딩 완료!')
 
