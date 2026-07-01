@@ -87,7 +87,6 @@ class FlexibleCNN(nn.Module):
 
 # ================== 2. 학습 설정 ==================
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Using device: {DEVICE}")
 EPOCHS = 50
 BATCH_SIZE = 128
 LR = 0.001
@@ -108,9 +107,7 @@ transform_test = transforms.Compose([
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 ])
 
-trainloader,testloader = get_dataloaders(batch_size=BATCH_SIZE)
 
-print('✅ 데이터 로딩 완료!')
 
 def train_one_epoch(model, loader, criterion, optimizer):
     model.train()
@@ -140,81 +137,87 @@ def evaluate(model, loader):
             correct += predicted.eq(targets).sum().item()
     return 100. * correct / total
 
-# ================== 3. 메인 학습 루프 ==================
-for mode in modes:
-    print(f"\n{'='*20} [{mode.upper()}] 학습 시작 {'='*20}")
+if __name__ == "__main__":
     
-    # 파일 경로 정의
-    final_path = os.path.join(CHECKPOINT_DIR, f"{mode}_final.pth")
-    best_path = os.path.join(CHECKPOINT_DIR, f"{mode}_best.pth")
-    checkpoint_path = os.path.join(CHECKPOINT_DIR, f"{mode}_checkpoint.pth")
+    print(f"Using device: {DEVICE}")
+    trainloader,testloader = get_dataloaders(batch_size=BATCH_SIZE)
 
-    # 1. 이미 완료된 모델은 스킵
-    if os.path.exists(final_path):
-        print(f"✅ [{mode}]는 이미 학습 완료되어 스킵합니다.")
-        continue
+    print('✅ 데이터 로딩 완료!')
+    # ================== 3. 메인 학습 루프 ==================
+    for mode in modes:
+        print(f"\n{'='*20} [{mode.upper()}] 학습 시작 {'='*20}")
+        
+        # 파일 경로 정의
+        final_path = os.path.join(CHECKPOINT_DIR, f"{mode}_final.pth")
+        best_path = os.path.join(CHECKPOINT_DIR, f"{mode}_best.pth")
+        checkpoint_path = os.path.join(CHECKPOINT_DIR, f"{mode}_checkpoint.pth")
 
-    model = FlexibleCNN(mode=mode).to(DEVICE)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=LR)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
+        # 1. 이미 완료된 모델은 스킵
+        if os.path.exists(final_path):
+            print(f"✅ [{mode}]는 이미 학습 완료되어 스킵합니다.")
+            continue
 
-    start_epoch = 0
-    best_acc = 0.0
+        model = FlexibleCNN(mode=mode).to(DEVICE)
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.Adam(model.parameters(), lr=LR)
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
 
-    # 2. 중간에 멈춘 기록이 있으면 이어서 학습 (Resume)
-    if os.path.exists(checkpoint_path):
-        print(f"🔄 [{mode}] 체크포인트 발견! 이어서 학습합니다.")
-        checkpoint = torch.load(checkpoint_path, map_location=DEVICE)
-        model.load_state_dict(checkpoint['model_state'])
-        optimizer.load_state_dict(checkpoint['optimizer_state'])
-        scheduler.load_state_dict(checkpoint['scheduler_state'])
-        start_epoch = checkpoint['epoch'] + 1
-        best_acc = checkpoint['best_acc']
-        print(f" -> {start_epoch} 에폭부터 재개 (현재 최고 정확도: {best_acc:.2f}%)")
+        start_epoch = 0
+        best_acc = 0.0
 
-    # 3. 학습 시작
-    for epoch in range(start_epoch, EPOCHS):
-        try:
-            start_time = time.time()
-            train_loss = train_one_epoch(model, trainloader, criterion, optimizer)
-            val_acc = evaluate(model, testloader)
-            scheduler.step()
-            
-            epoch_time = time.time() - start_time
-            print(f"Epoch [{epoch+1}/{EPOCHS}] | Loss: {train_loss:.4f} | Acc: {val_acc:.2f}% | Best: {best_acc:.2f}% | Time: {epoch_time:.1f}s")
+        # 2. 중간에 멈춘 기록이 있으면 이어서 학습 (Resume)
+        if os.path.exists(checkpoint_path):
+            print(f"🔄 [{mode}] 체크포인트 발견! 이어서 학습합니다.")
+            checkpoint = torch.load(checkpoint_path, map_location=DEVICE)
+            model.load_state_dict(checkpoint['model_state'])
+            optimizer.load_state_dict(checkpoint['optimizer_state'])
+            scheduler.load_state_dict(checkpoint['scheduler_state'])
+            start_epoch = checkpoint['epoch'] + 1
+            best_acc = checkpoint['best_acc']
+            print(f" -> {start_epoch} 에폭부터 재개 (현재 최고 정확도: {best_acc:.2f}%)")
 
-            # 최고 성능 모델 저장
-            if val_acc > best_acc:
-                best_acc = val_acc
-                torch.save(model.state_dict(), best_path)
-                print(f"  -> 🏆 최고 성능 갱신! Best 모델 저장됨.")
+        # 3. 학습 시작
+        for epoch in range(start_epoch, EPOCHS):
+            try:
+                start_time = time.time()
+                train_loss = train_one_epoch(model, trainloader, criterion, optimizer)
+                val_acc = evaluate(model, testloader)
+                scheduler.step()
+                
+                epoch_time = time.time() - start_time
+                print(f"Epoch [{epoch+1}/{EPOCHS}] | Loss: {train_loss:.4f} | Acc: {val_acc:.2f}% | Best: {best_acc:.2f}% | Time: {epoch_time:.1f}s")
 
-            # 매 에폭마다 체크포인트 저장 (불상사 방지)
-            torch.save({
-                'epoch': epoch,
-                'model_state': model.state_dict(),
-                'optimizer_state': optimizer.state_dict(),
-                'scheduler_state': scheduler.state_dict(),
-                'best_acc': best_acc,
-            }, checkpoint_path)
+                # 최고 성능 모델 저장
+                if val_acc > best_acc:
+                    best_acc = val_acc
+                    torch.save(model.state_dict(), best_path)
+                    print(f"  -> 🏆 최고 성능 갱신! Best 모델 저장됨.")
 
-        except KeyboardInterrupt:
-            print("\n\n🛑 사용자 중단 감지! 현재 상태 저장 후 종료합니다.")
-            torch.save({
-                'epoch': epoch,
-                'model_state': model.state_dict(),
-                'optimizer_state': optimizer.state_dict(),
-                'scheduler_state': scheduler.state_dict(),
-                'best_acc': best_acc,
-            }, checkpoint_path)
-            exit()
+                # 매 에폭마다 체크포인트 저장 (불상사 방지)
+                torch.save({
+                    'epoch': epoch,
+                    'model_state': model.state_dict(),
+                    'optimizer_state': optimizer.state_dict(),
+                    'scheduler_state': scheduler.state_dict(),
+                    'best_acc': best_acc,
+                }, checkpoint_path)
 
-    # 4. 해당 모델 학습 완료 처리
-    torch.save(model.state_dict(), final_path)
-    if os.path.exists(checkpoint_path):
-        os.remove(checkpoint_path) # 완료되었으니 중간 체크포인트 삭제
-    print(f"🎉 [{mode.upper()}] 학습 완전 종료! 최종 정확도: {best_acc:.2f}%")
-    print(f" -> 최종 모델: {final_path}")
+            except KeyboardInterrupt:
+                print("\n\n🛑 사용자 중단 감지! 현재 상태 저장 후 종료합니다.")
+                torch.save({
+                    'epoch': epoch,
+                    'model_state': model.state_dict(),
+                    'optimizer_state': optimizer.state_dict(),
+                    'scheduler_state': scheduler.state_dict(),
+                    'best_acc': best_acc,
+                }, checkpoint_path)
+                exit()
 
-print("\n\n✅ 모든 모델 학습이 완료되었습니다!")
+        # 4. 해당 모델 학습 완료 처리
+        torch.save(model.state_dict(), final_path)
+        if os.path.exists(checkpoint_path):
+            os.remove(checkpoint_path) # 완료되었으니 중간 체크포인트 삭제
+        print(f"🎉 [{mode.upper()}] 학습 완전 종료! 최종 정확도: {best_acc:.2f}%")
+        print(f" -> 최종 모델: {final_path}")
+
+    print("\n\n✅ 모든 모델 학습이 완료되었습니다!")

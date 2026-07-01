@@ -1,3 +1,7 @@
 .venv/
 **/__pycache__/
 **/*.pyc
+**/*.pth
+data_cache/
+data/
+data_cifar10/
