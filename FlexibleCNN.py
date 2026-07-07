@@ -137,6 +137,7 @@ def evaluate(model, loader):
             correct += predicted.eq(targets).sum().item()
     return 100. * correct / total
 
+
 if __name__ == "__main__":
     
     print(f"Using device: {DEVICE}")
