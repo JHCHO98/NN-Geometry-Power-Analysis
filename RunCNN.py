@@ -4,47 +4,7 @@ import csv
 import torch
 import torch.nn as nn
 from codecarbon import EmissionsTracker
-
-# [중요] 보냈던 모델 클래스 구조 정의 그대로 유지
-class FlexibleCNN(nn.Module):
-    def __init__(self, mode='standard'):
-        super().__init__()
-        if mode == 'deep_narrow':
-            self.features = nn.Sequential(
-                nn.Conv2d(3, 16, kernel_size=3, padding=1), nn.ReLU(),
-                nn.Conv2d(16, 16, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2),
-                nn.Conv2d(16, 32, kernel_size=3, padding=1), nn.ReLU(),
-                nn.Conv2d(32, 32, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2),
-                nn.Conv2d(32, 64, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2)
-            )
-            self.classifier = nn.Linear(64 * 4 * 4, 10)
-        elif mode == 'shallow_wide':
-            self.features = nn.Sequential(
-                nn.Conv2d(3, 114, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(4, 4),
-                nn.Conv2d(114, 114, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2)
-            )
-            self.classifier = nn.Linear(114 * 4 * 4, 10)
-        else:
-            self.features = nn.Sequential(
-                nn.Conv2d(3, 32, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2),
-                nn.Conv2d(32, 64, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2),
-                nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2)
-            )
-            self.classifier = nn.Linear(64 * 4 * 4, 10)
-
-    def forward(self, x):
-        x = self.features(x)
-        x = torch.flatten(x, 1)
-        x = self.classifier(x)
-        return x
+from FlexibleCNN import FlexibleCNN
 
 # 1. 벤치마크 환경 세팅 (적정기술 시나리오용 순수 CPU 강제)
 device = torch.device("cpu")
