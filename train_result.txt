@@ -1,0 +1,12 @@
+🎉 [DEEP_NARROW] 학습 완전 종료! 최종 정확도: 84.09%
+ -> 최종 모델: ./checkpoints\deep_narrow_final.pth
+ 🎉 [SHALLOW_WIDE] 학습 완전 종료! 최종 정확도: 79.20%
+ -> 최종 모델: ./checkpoints\shallow_wide_final.pth
+ 🎉 [MID_BALANCED] 학습 완전 종료! 최종 정확도: 82.99%
+ -> 최종 모델: ./checkpoints\mid_balanced_final.pth
+ 🎉 [FUNNEL_WIDE_TO_NARROW] 학습 완전 종료! 최종 정확도: 81.35%
+ -> 최종 모델: ./checkpoints\funnel_wide_to_narrow_final.pth
+ 🎉 [UNIFORM] 학습 완전 종료! 최종 정확도: 82.08%
+ -> 최종 모델: ./checkpoints\uniform_final.pth
+ 🎉 [HOURGLASS] 학습 완전 종료! 최종 정확도: 82.99%
+ -> 최종 모델: ./checkpoints\hourglass_final.pth
