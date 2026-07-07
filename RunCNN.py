@@ -80,6 +80,12 @@ def measure_power(model_path, mode_name, num_loops=2000):
     # ----------------------------------------------------
     # TRACK 1: 모델 '전체(FULL)' 추론 전력 측정
     # ----------------------------------------------------
+    
+    print(f"-> [Warm-up] 예비 추론 50회 진행 중...")
+    with torch.no_grad():
+        for _ in range(50):
+            _ = model(dummy_input)
+
     print(f"-> 전체 모델 {num_loops}회 순방향 추론 중...")
     tracker = EmissionsTracker(logging_logger='none')
     tracker.start()
