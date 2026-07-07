@@ -143,15 +143,16 @@ def measure_power(model_path, mode_name, num_loops=2000):
 if __name__ == "__main__":
     # ※ 타겟 컴퓨터로 옮겨둔 .pth 파일 경로 명을 적어주세요.
     # 예시로 가중치가 저장된 두 파일 명을 가정했습니다.
+    file_lists=['models/deep_narrow_final.pth', 'models/funnel_wide_to_narrow_final.pth', 'models/hourglass_final.pth', 'models/mid_balanced_final.pth', 'models/shallow_wide_final.pth', 'models/uniform_final.pth']
+
+    for filename in file_lists:
+        try:
+            if os.path.exists(filename):
+                measure_power(model_path=filename, mode_name=filename[7:-10], num_loops=2000)
+            else:
+                print(f'No Such file: {filename}')
+        except RuntimeError as e:
+            print(e)
     
-    if os.path.exists("deep_narrow.pth"):
-        measure_power(model_path="deep_narrow.pth", mode_name="deep_narrow", num_loops=2000)
-    else:
-        print("[오류] deep_narrow.pth 파일이 현재 경로에 없습니다.")
-        
-    if os.path.exists("shallow_wide.pth"):
-        measure_power(model_path="shallow_wide.pth", mode_name="shallow_wide", num_loops=2000)
-    else:
-        print("[오류] shallow_wide.pth 파일이 현재 경로에 없습니다.")
 
     print("\n[*] 모든 실험 완료! 'nn_geometry_power_log.csv' 결과 확인 바람.")
