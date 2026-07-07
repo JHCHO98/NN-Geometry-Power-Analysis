@@ -6,3 +6,4 @@ data_cache/
 data/
 checkpoints/
 data_cifar10/
+.pre-commit-config.yaml

@@ -1,12 +1,504 @@
-🎉 [DEEP_NARROW] 학습 완전 종료! 최종 정확도: 84.09%
+Using device: cuda
+✅ 이미 변환된 .pkl 파일이 존재합니다. 변환 과정을 건너뜁니다.
+📂 데이터 로드 중...
+✅ 로드 완료! Train: (50000, 3, 32, 32), Test: (10000, 3, 32, 32)
+✅ 데이터 로딩 완료!
+
+==================== [DEEP_NARROW] 학습 시작 ====================
+Epoch [1/50] | Loss: 1.6734 | Acc: 53.02% | Best: 0.00% | Time: 17.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [2/50] | Loss: 1.2633 | Acc: 60.63% | Best: 53.02% | Time: 14.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [3/50] | Loss: 1.0737 | Acc: 67.58% | Best: 60.63% | Time: 14.1s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [4/50] | Loss: 0.9514 | Acc: 69.41% | Best: 67.58% | Time: 14.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [5/50] | Loss: 0.8736 | Acc: 72.10% | Best: 69.41% | Time: 14.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [6/50] | Loss: 0.8070 | Acc: 74.30% | Best: 72.10% | Time: 14.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [7/50] | Loss: 0.7612 | Acc: 75.40% | Best: 74.30% | Time: 14.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [8/50] | Loss: 0.7233 | Acc: 76.76% | Best: 75.40% | Time: 14.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [9/50] | Loss: 0.6838 | Acc: 77.44% | Best: 76.76% | Time: 14.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [10/50] | Loss: 0.6635 | Acc: 78.48% | Best: 77.44% | Time: 14.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [11/50] | Loss: 0.6441 | Acc: 77.32% | Best: 78.48% | Time: 14.2s
+Epoch [12/50] | Loss: 0.6152 | Acc: 78.03% | Best: 78.48% | Time: 14.2s
+Epoch [13/50] | Loss: 0.5958 | Acc: 79.42% | Best: 78.48% | Time: 14.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [14/50] | Loss: 0.5892 | Acc: 80.38% | Best: 79.42% | Time: 14.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [15/50] | Loss: 0.5676 | Acc: 80.33% | Best: 80.38% | Time: 14.5s
+Epoch [16/50] | Loss: 0.5493 | Acc: 80.93% | Best: 80.38% | Time: 14.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [17/50] | Loss: 0.5347 | Acc: 80.27% | Best: 80.93% | Time: 14.2s
+Epoch [18/50] | Loss: 0.5251 | Acc: 80.63% | Best: 80.93% | Time: 14.2s
+Epoch [19/50] | Loss: 0.5105 | Acc: 81.88% | Best: 80.93% | Time: 14.1s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [20/50] | Loss: 0.4981 | Acc: 81.77% | Best: 81.88% | Time: 14.2s
+Epoch [21/50] | Loss: 0.4931 | Acc: 82.04% | Best: 81.88% | Time: 14.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [22/50] | Loss: 0.4760 | Acc: 82.20% | Best: 82.04% | Time: 14.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [23/50] | Loss: 0.4717 | Acc: 82.26% | Best: 82.20% | Time: 14.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [24/50] | Loss: 0.4627 | Acc: 82.58% | Best: 82.26% | Time: 14.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [25/50] | Loss: 0.4511 | Acc: 81.81% | Best: 82.58% | Time: 14.7s
+Epoch [26/50] | Loss: 0.4439 | Acc: 82.06% | Best: 82.58% | Time: 14.3s
+Epoch [27/50] | Loss: 0.4364 | Acc: 82.66% | Best: 82.58% | Time: 14.7s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [28/50] | Loss: 0.4245 | Acc: 82.42% | Best: 82.66% | Time: 15.7s
+Epoch [29/50] | Loss: 0.4181 | Acc: 83.12% | Best: 82.66% | Time: 15.9s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [30/50] | Loss: 0.4112 | Acc: 82.94% | Best: 83.12% | Time: 15.2s
+Epoch [31/50] | Loss: 0.4014 | Acc: 83.32% | Best: 83.12% | Time: 14.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [32/50] | Loss: 0.3962 | Acc: 83.49% | Best: 83.32% | Time: 14.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [33/50] | Loss: 0.3968 | Acc: 83.03% | Best: 83.49% | Time: 14.7s
+Epoch [34/50] | Loss: 0.3817 | Acc: 83.76% | Best: 83.49% | Time: 16.0s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [35/50] | Loss: 0.3771 | Acc: 83.87% | Best: 83.76% | Time: 14.8s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [36/50] | Loss: 0.3730 | Acc: 83.87% | Best: 83.87% | Time: 14.4s
+Epoch [37/50] | Loss: 0.3732 | Acc: 83.62% | Best: 83.87% | Time: 14.5s
+Epoch [38/50] | Loss: 0.3651 | Acc: 84.00% | Best: 83.87% | Time: 15.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [39/50] | Loss: 0.3599 | Acc: 83.85% | Best: 84.00% | Time: 15.7s
+Epoch [40/50] | Loss: 0.3565 | Acc: 83.89% | Best: 84.00% | Time: 15.7s
+Epoch [41/50] | Loss: 0.3527 | Acc: 84.10% | Best: 84.00% | Time: 15.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [42/50] | Loss: 0.3467 | Acc: 84.21% | Best: 84.10% | Time: 16.9s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [43/50] | Loss: 0.3450 | Acc: 83.94% | Best: 84.21% | Time: 15.7s
+Epoch [44/50] | Loss: 0.3408 | Acc: 84.25% | Best: 84.21% | Time: 15.7s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [45/50] | Loss: 0.3395 | Acc: 84.32% | Best: 84.25% | Time: 15.8s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [46/50] | Loss: 0.3392 | Acc: 84.31% | Best: 84.32% | Time: 16.2s
+Epoch [47/50] | Loss: 0.3408 | Acc: 84.20% | Best: 84.32% | Time: 14.7s
+Epoch [48/50] | Loss: 0.3346 | Acc: 84.26% | Best: 84.32% | Time: 14.5s
+Epoch [49/50] | Loss: 0.3366 | Acc: 84.30% | Best: 84.32% | Time: 14.7s
+Epoch [50/50] | Loss: 0.3326 | Acc: 84.36% | Best: 84.32% | Time: 14.7s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+🎉 [DEEP_NARROW] 학습 완전 종료! 최종 정확도: 84.36%
  -> 최종 모델: ./checkpoints\deep_narrow_final.pth
- 🎉 [SHALLOW_WIDE] 학습 완전 종료! 최종 정확도: 79.20%
+
+
+
+==================== [SHALLOW_WIDE] 학습 시작 ====================
+Epoch [1/50] | Loss: 1.5682 | Acc: 55.06% | Best: 0.00% | Time: 14.6s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [2/50] | Loss: 1.2603 | Acc: 62.46% | Best: 55.06% | Time: 14.8s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [3/50] | Loss: 1.1176 | Acc: 66.36% | Best: 62.46% | Time: 14.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [4/50] | Loss: 1.0374 | Acc: 68.19% | Best: 66.36% | Time: 14.6s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [5/50] | Loss: 0.9891 | Acc: 68.17% | Best: 68.19% | Time: 15.0s
+Epoch [6/50] | Loss: 0.9499 | Acc: 71.17% | Best: 68.19% | Time: 15.0s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [7/50] | Loss: 0.9181 | Acc: 71.02% | Best: 71.17% | Time: 14.8s
+Epoch [8/50] | Loss: 0.8897 | Acc: 71.49% | Best: 71.17% | Time: 14.6s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [9/50] | Loss: 0.8662 | Acc: 72.01% | Best: 71.49% | Time: 14.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [10/50] | Loss: 0.8467 | Acc: 73.31% | Best: 72.01% | Time: 14.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [11/50] | Loss: 0.8353 | Acc: 72.35% | Best: 73.31% | Time: 14.4s
+Epoch [12/50] | Loss: 0.8197 | Acc: 73.42% | Best: 73.31% | Time: 14.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [13/50] | Loss: 0.8048 | Acc: 73.82% | Best: 73.42% | Time: 14.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [14/50] | Loss: 0.7972 | Acc: 73.05% | Best: 73.82% | Time: 14.3s
+Epoch [15/50] | Loss: 0.7812 | Acc: 74.42% | Best: 73.82% | Time: 14.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [16/50] | Loss: 0.7749 | Acc: 74.55% | Best: 74.42% | Time: 14.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [17/50] | Loss: 0.7651 | Acc: 74.95% | Best: 74.55% | Time: 14.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [18/50] | Loss: 0.7515 | Acc: 75.19% | Best: 74.95% | Time: 14.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [19/50] | Loss: 0.7428 | Acc: 74.69% | Best: 75.19% | Time: 14.4s
+Epoch [20/50] | Loss: 0.7364 | Acc: 75.89% | Best: 75.19% | Time: 14.7s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [21/50] | Loss: 0.7285 | Acc: 76.23% | Best: 75.89% | Time: 16.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [22/50] | Loss: 0.7152 | Acc: 76.28% | Best: 76.23% | Time: 16.7s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [23/50] | Loss: 0.7052 | Acc: 76.29% | Best: 76.28% | Time: 16.0s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [24/50] | Loss: 0.7057 | Acc: 76.64% | Best: 76.29% | Time: 14.7s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [25/50] | Loss: 0.6991 | Acc: 76.60% | Best: 76.64% | Time: 14.5s
+Epoch [26/50] | Loss: 0.6927 | Acc: 76.69% | Best: 76.64% | Time: 14.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [27/50] | Loss: 0.6875 | Acc: 77.14% | Best: 76.69% | Time: 14.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [28/50] | Loss: 0.6775 | Acc: 76.71% | Best: 77.14% | Time: 14.5s
+Epoch [29/50] | Loss: 0.6681 | Acc: 77.48% | Best: 77.14% | Time: 14.8s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [30/50] | Loss: 0.6645 | Acc: 77.44% | Best: 77.48% | Time: 14.6s
+Epoch [31/50] | Loss: 0.6597 | Acc: 77.62% | Best: 77.48% | Time: 14.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [32/50] | Loss: 0.6517 | Acc: 76.78% | Best: 77.62% | Time: 14.6s
+Epoch [33/50] | Loss: 0.6513 | Acc: 78.01% | Best: 77.62% | Time: 14.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [34/50] | Loss: 0.6378 | Acc: 77.32% | Best: 78.01% | Time: 14.9s
+Epoch [35/50] | Loss: 0.6312 | Acc: 77.76% | Best: 78.01% | Time: 14.7s
+Epoch [36/50] | Loss: 0.6314 | Acc: 78.31% | Best: 78.01% | Time: 15.1s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [37/50] | Loss: 0.6290 | Acc: 78.15% | Best: 78.31% | Time: 16.6s
+Epoch [38/50] | Loss: 0.6237 | Acc: 78.33% | Best: 78.31% | Time: 16.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [39/50] | Loss: 0.6182 | Acc: 78.46% | Best: 78.33% | Time: 16.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [40/50] | Loss: 0.6150 | Acc: 78.27% | Best: 78.46% | Time: 16.2s
+Epoch [41/50] | Loss: 0.6130 | Acc: 78.28% | Best: 78.46% | Time: 16.2s
+Epoch [42/50] | Loss: 0.6129 | Acc: 78.63% | Best: 78.46% | Time: 16.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [43/50] | Loss: 0.6083 | Acc: 78.38% | Best: 78.63% | Time: 16.2s
+Epoch [44/50] | Loss: 0.6066 | Acc: 78.56% | Best: 78.63% | Time: 16.2s
+Epoch [45/50] | Loss: 0.6016 | Acc: 78.81% | Best: 78.63% | Time: 16.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [46/50] | Loss: 0.6032 | Acc: 78.72% | Best: 78.81% | Time: 16.2s
+Epoch [47/50] | Loss: 0.5976 | Acc: 78.87% | Best: 78.81% | Time: 16.1s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [48/50] | Loss: 0.5984 | Acc: 78.83% | Best: 78.87% | Time: 16.3s
+Epoch [49/50] | Loss: 0.5994 | Acc: 78.86% | Best: 78.87% | Time: 16.5s
+Epoch [50/50] | Loss: 0.5969 | Acc: 78.84% | Best: 78.87% | Time: 16.2s
+🎉 [SHALLOW_WIDE] 학습 완전 종료! 최종 정확도: 78.87%
  -> 최종 모델: ./checkpoints\shallow_wide_final.pth
- 🎉 [MID_BALANCED] 학습 완전 종료! 최종 정확도: 82.99%
+
+
+
+
+==================== [MID_BALANCED] 학습 시작 ====================
+Epoch [1/50] | Loss: 1.5823 | Acc: 53.34% | Best: 0.00% | Time: 16.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [2/50] | Loss: 1.2155 | Acc: 64.70% | Best: 53.34% | Time: 14.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [3/50] | Loss: 1.0452 | Acc: 66.40% | Best: 64.70% | Time: 16.7s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [4/50] | Loss: 0.9538 | Acc: 70.12% | Best: 66.40% | Time: 15.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [5/50] | Loss: 0.8835 | Acc: 71.97% | Best: 70.12% | Time: 15.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [6/50] | Loss: 0.8196 | Acc: 73.82% | Best: 71.97% | Time: 15.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [7/50] | Loss: 0.7882 | Acc: 74.87% | Best: 73.82% | Time: 15.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [8/50] | Loss: 0.7563 | Acc: 75.39% | Best: 74.87% | Time: 15.6s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [9/50] | Loss: 0.7202 | Acc: 75.39% | Best: 75.39% | Time: 16.8s
+Epoch [10/50] | Loss: 0.6988 | Acc: 76.95% | Best: 75.39% | Time: 15.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [11/50] | Loss: 0.6780 | Acc: 76.80% | Best: 76.95% | Time: 15.8s
+Epoch [12/50] | Loss: 0.6594 | Acc: 76.57% | Best: 76.95% | Time: 15.4s
+Epoch [13/50] | Loss: 0.6452 | Acc: 78.19% | Best: 76.95% | Time: 15.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [14/50] | Loss: 0.6329 | Acc: 77.95% | Best: 78.19% | Time: 15.5s
+Epoch [15/50] | Loss: 0.6172 | Acc: 78.17% | Best: 78.19% | Time: 15.6s
+Epoch [16/50] | Loss: 0.6062 | Acc: 77.14% | Best: 78.19% | Time: 15.3s
+Epoch [17/50] | Loss: 0.5901 | Acc: 79.28% | Best: 78.19% | Time: 15.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [18/50] | Loss: 0.5786 | Acc: 78.95% | Best: 79.28% | Time: 15.3s
+Epoch [19/50] | Loss: 0.5674 | Acc: 79.59% | Best: 79.28% | Time: 15.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [20/50] | Loss: 0.5568 | Acc: 80.11% | Best: 79.59% | Time: 15.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [21/50] | Loss: 0.5452 | Acc: 80.25% | Best: 80.11% | Time: 16.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [22/50] | Loss: 0.5330 | Acc: 80.27% | Best: 80.25% | Time: 16.1s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [23/50] | Loss: 0.5295 | Acc: 80.58% | Best: 80.27% | Time: 17.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [24/50] | Loss: 0.5221 | Acc: 80.63% | Best: 80.58% | Time: 14.7s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [25/50] | Loss: 0.5114 | Acc: 80.61% | Best: 80.63% | Time: 14.5s
+Epoch [26/50] | Loss: 0.5058 | Acc: 80.38% | Best: 80.63% | Time: 14.4s
+Epoch [27/50] | Loss: 0.4949 | Acc: 81.49% | Best: 80.63% | Time: 14.7s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [28/50] | Loss: 0.4892 | Acc: 81.22% | Best: 81.49% | Time: 14.6s
+Epoch [29/50] | Loss: 0.4785 | Acc: 81.79% | Best: 81.49% | Time: 14.7s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [30/50] | Loss: 0.4737 | Acc: 80.99% | Best: 81.79% | Time: 14.5s
+Epoch [31/50] | Loss: 0.4701 | Acc: 81.23% | Best: 81.79% | Time: 14.5s
+Epoch [32/50] | Loss: 0.4614 | Acc: 81.27% | Best: 81.79% | Time: 14.4s
+Epoch [33/50] | Loss: 0.4532 | Acc: 81.83% | Best: 81.79% | Time: 14.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [34/50] | Loss: 0.4511 | Acc: 82.12% | Best: 81.83% | Time: 14.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [35/50] | Loss: 0.4433 | Acc: 81.51% | Best: 82.12% | Time: 14.4s
+Epoch [36/50] | Loss: 0.4369 | Acc: 82.27% | Best: 82.12% | Time: 14.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [37/50] | Loss: 0.4348 | Acc: 82.54% | Best: 82.27% | Time: 14.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [38/50] | Loss: 0.4303 | Acc: 82.07% | Best: 82.54% | Time: 14.3s
+Epoch [39/50] | Loss: 0.4266 | Acc: 82.34% | Best: 82.54% | Time: 14.5s
+Epoch [40/50] | Loss: 0.4220 | Acc: 82.40% | Best: 82.54% | Time: 14.3s
+Epoch [41/50] | Loss: 0.4219 | Acc: 82.29% | Best: 82.54% | Time: 14.4s
+Epoch [42/50] | Loss: 0.4145 | Acc: 82.59% | Best: 82.54% | Time: 14.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [43/50] | Loss: 0.4150 | Acc: 82.40% | Best: 82.59% | Time: 14.5s
+Epoch [44/50] | Loss: 0.4102 | Acc: 82.67% | Best: 82.59% | Time: 14.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [45/50] | Loss: 0.4086 | Acc: 82.57% | Best: 82.67% | Time: 14.5s
+Epoch [46/50] | Loss: 0.4087 | Acc: 82.78% | Best: 82.67% | Time: 14.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [47/50] | Loss: 0.4063 | Acc: 82.78% | Best: 82.78% | Time: 14.3s
+Epoch [48/50] | Loss: 0.4063 | Acc: 82.80% | Best: 82.78% | Time: 14.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [49/50] | Loss: 0.4017 | Acc: 82.83% | Best: 82.80% | Time: 14.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [50/50] | Loss: 0.4048 | Acc: 82.79% | Best: 82.83% | Time: 14.4s
+🎉 [MID_BALANCED] 학습 완전 종료! 최종 정확도: 82.83%
  -> 최종 모델: ./checkpoints\mid_balanced_final.pth
- 🎉 [FUNNEL_WIDE_TO_NARROW] 학습 완전 종료! 최종 정확도: 81.35%
+
+
+
+
+==================== [FUNNEL_WIDE_TO_NARROW] 학습 시작 ====================
+Epoch [1/50] | Loss: 1.6184 | Acc: 53.39% | Best: 0.00% | Time: 13.7s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [2/50] | Loss: 1.2749 | Acc: 61.82% | Best: 53.39% | Time: 15.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [3/50] | Loss: 1.1160 | Acc: 65.63% | Best: 61.82% | Time: 15.0s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [4/50] | Loss: 1.0188 | Acc: 68.35% | Best: 65.63% | Time: 14.8s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [5/50] | Loss: 0.9466 | Acc: 70.16% | Best: 68.35% | Time: 14.8s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [6/50] | Loss: 0.8966 | Acc: 71.01% | Best: 70.16% | Time: 14.9s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [7/50] | Loss: 0.8582 | Acc: 71.36% | Best: 71.01% | Time: 15.0s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [8/50] | Loss: 0.8304 | Acc: 72.95% | Best: 71.36% | Time: 14.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [9/50] | Loss: 0.8069 | Acc: 72.86% | Best: 72.95% | Time: 14.4s
+Epoch [10/50] | Loss: 0.7851 | Acc: 75.37% | Best: 72.95% | Time: 14.6s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [11/50] | Loss: 0.7607 | Acc: 75.26% | Best: 75.37% | Time: 14.5s
+Epoch [12/50] | Loss: 0.7450 | Acc: 75.83% | Best: 75.37% | Time: 15.0s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [13/50] | Loss: 0.7288 | Acc: 75.99% | Best: 75.83% | Time: 15.0s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [14/50] | Loss: 0.7200 | Acc: 74.82% | Best: 75.99% | Time: 14.8s
+Epoch [15/50] | Loss: 0.7006 | Acc: 76.15% | Best: 75.99% | Time: 15.0s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [16/50] | Loss: 0.6828 | Acc: 77.00% | Best: 76.15% | Time: 14.7s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [17/50] | Loss: 0.6748 | Acc: 76.86% | Best: 77.00% | Time: 14.2s
+Epoch [18/50] | Loss: 0.6683 | Acc: 77.37% | Best: 77.00% | Time: 14.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [19/50] | Loss: 0.6531 | Acc: 76.81% | Best: 77.37% | Time: 14.7s
+Epoch [20/50] | Loss: 0.6432 | Acc: 78.26% | Best: 77.37% | Time: 14.8s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [21/50] | Loss: 0.6313 | Acc: 78.34% | Best: 78.26% | Time: 14.7s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [22/50] | Loss: 0.6219 | Acc: 78.85% | Best: 78.34% | Time: 14.8s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [23/50] | Loss: 0.6201 | Acc: 77.74% | Best: 78.85% | Time: 14.8s
+Epoch [24/50] | Loss: 0.6081 | Acc: 77.83% | Best: 78.85% | Time: 15.0s
+Epoch [25/50] | Loss: 0.6044 | Acc: 78.82% | Best: 78.85% | Time: 14.8s
+Epoch [26/50] | Loss: 0.5935 | Acc: 78.40% | Best: 78.85% | Time: 14.8s
+Epoch [27/50] | Loss: 0.5840 | Acc: 79.27% | Best: 78.85% | Time: 14.9s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [28/50] | Loss: 0.5733 | Acc: 79.23% | Best: 79.27% | Time: 14.7s
+Epoch [29/50] | Loss: 0.5690 | Acc: 79.97% | Best: 79.27% | Time: 14.8s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [30/50] | Loss: 0.5637 | Acc: 79.39% | Best: 79.97% | Time: 14.6s
+Epoch [31/50] | Loss: 0.5566 | Acc: 79.09% | Best: 79.97% | Time: 15.0s
+Epoch [32/50] | Loss: 0.5504 | Acc: 79.62% | Best: 79.97% | Time: 14.5s
+Epoch [33/50] | Loss: 0.5482 | Acc: 80.12% | Best: 79.97% | Time: 14.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [34/50] | Loss: 0.5403 | Acc: 80.38% | Best: 80.12% | Time: 14.7s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [35/50] | Loss: 0.5346 | Acc: 80.77% | Best: 80.38% | Time: 14.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [36/50] | Loss: 0.5313 | Acc: 80.70% | Best: 80.77% | Time: 14.6s
+Epoch [37/50] | Loss: 0.5293 | Acc: 80.60% | Best: 80.77% | Time: 14.5s
+Epoch [38/50] | Loss: 0.5209 | Acc: 80.22% | Best: 80.77% | Time: 14.4s
+Epoch [39/50] | Loss: 0.5164 | Acc: 81.12% | Best: 80.77% | Time: 14.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [40/50] | Loss: 0.5135 | Acc: 80.81% | Best: 81.12% | Time: 14.4s
+Epoch [41/50] | Loss: 0.5107 | Acc: 80.86% | Best: 81.12% | Time: 14.4s
+Epoch [42/50] | Loss: 0.5068 | Acc: 81.35% | Best: 81.12% | Time: 15.1s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [43/50] | Loss: 0.5010 | Acc: 81.28% | Best: 81.35% | Time: 14.5s
+Epoch [44/50] | Loss: 0.4997 | Acc: 81.36% | Best: 81.35% | Time: 14.6s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [45/50] | Loss: 0.5012 | Acc: 81.10% | Best: 81.36% | Time: 14.9s
+Epoch [46/50] | Loss: 0.4983 | Acc: 81.37% | Best: 81.36% | Time: 14.8s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [47/50] | Loss: 0.4952 | Acc: 81.19% | Best: 81.37% | Time: 14.7s
+Epoch [48/50] | Loss: 0.4917 | Acc: 81.34% | Best: 81.37% | Time: 15.1s
+Epoch [49/50] | Loss: 0.4944 | Acc: 81.34% | Best: 81.37% | Time: 15.2s
+Epoch [50/50] | Loss: 0.4965 | Acc: 81.30% | Best: 81.37% | Time: 15.4s
+🎉 [FUNNEL_WIDE_TO_NARROW] 학습 완전 종료! 최종 정확도: 81.37%
  -> 최종 모델: ./checkpoints\funnel_wide_to_narrow_final.pth
- 🎉 [UNIFORM] 학습 완전 종료! 최종 정확도: 82.08%
+
+
+
+==================== [UNIFORM] 학습 시작 ====================
+Epoch [1/50] | Loss: 1.5819 | Acc: 55.61% | Best: 0.00% | Time: 14.6s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [2/50] | Loss: 1.2132 | Acc: 63.59% | Best: 55.61% | Time: 15.1s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [3/50] | Loss: 1.0500 | Acc: 66.98% | Best: 63.59% | Time: 15.9s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [4/50] | Loss: 0.9574 | Acc: 71.02% | Best: 66.98% | Time: 15.1s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [5/50] | Loss: 0.8911 | Acc: 71.40% | Best: 71.02% | Time: 15.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [6/50] | Loss: 0.8440 | Acc: 73.34% | Best: 71.40% | Time: 15.1s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [7/50] | Loss: 0.8035 | Acc: 74.82% | Best: 73.34% | Time: 15.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [8/50] | Loss: 0.7689 | Acc: 74.11% | Best: 74.82% | Time: 15.2s
+Epoch [9/50] | Loss: 0.7418 | Acc: 74.58% | Best: 74.82% | Time: 15.2s
+Epoch [10/50] | Loss: 0.7211 | Acc: 76.43% | Best: 74.82% | Time: 15.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [11/50] | Loss: 0.6968 | Acc: 77.01% | Best: 76.43% | Time: 15.1s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [12/50] | Loss: 0.6792 | Acc: 76.48% | Best: 77.01% | Time: 15.1s
+Epoch [13/50] | Loss: 0.6633 | Acc: 77.91% | Best: 77.01% | Time: 15.1s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [14/50] | Loss: 0.6503 | Acc: 77.55% | Best: 77.91% | Time: 15.1s
+Epoch [15/50] | Loss: 0.6321 | Acc: 77.70% | Best: 77.91% | Time: 15.4s
+Epoch [16/50] | Loss: 0.6230 | Acc: 78.68% | Best: 77.91% | Time: 15.0s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [17/50] | Loss: 0.6064 | Acc: 78.87% | Best: 78.68% | Time: 15.0s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [18/50] | Loss: 0.5977 | Acc: 79.34% | Best: 78.87% | Time: 15.0s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [19/50] | Loss: 0.5858 | Acc: 79.60% | Best: 79.34% | Time: 15.1s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [20/50] | Loss: 0.5796 | Acc: 79.14% | Best: 79.60% | Time: 15.2s
+Epoch [21/50] | Loss: 0.5699 | Acc: 79.70% | Best: 79.60% | Time: 15.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [22/50] | Loss: 0.5613 | Acc: 80.60% | Best: 79.70% | Time: 15.1s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [23/50] | Loss: 0.5489 | Acc: 79.57% | Best: 80.60% | Time: 15.2s
+Epoch [24/50] | Loss: 0.5392 | Acc: 79.95% | Best: 80.60% | Time: 15.4s
+Epoch [25/50] | Loss: 0.5307 | Acc: 80.64% | Best: 80.60% | Time: 15.0s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [26/50] | Loss: 0.5229 | Acc: 80.06% | Best: 80.64% | Time: 15.1s
+Epoch [27/50] | Loss: 0.5134 | Acc: 81.26% | Best: 80.64% | Time: 15.1s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [28/50] | Loss: 0.5101 | Acc: 81.38% | Best: 81.26% | Time: 15.1s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [29/50] | Loss: 0.5001 | Acc: 81.36% | Best: 81.38% | Time: 15.1s
+Epoch [30/50] | Loss: 0.4935 | Acc: 81.26% | Best: 81.38% | Time: 15.3s
+Epoch [31/50] | Loss: 0.4858 | Acc: 81.22% | Best: 81.38% | Time: 15.3s
+Epoch [32/50] | Loss: 0.4773 | Acc: 81.84% | Best: 81.38% | Time: 15.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [33/50] | Loss: 0.4740 | Acc: 82.00% | Best: 81.84% | Time: 15.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [34/50] | Loss: 0.4703 | Acc: 81.98% | Best: 82.00% | Time: 15.4s
+Epoch [35/50] | Loss: 0.4643 | Acc: 81.94% | Best: 82.00% | Time: 15.5s
+Epoch [36/50] | Loss: 0.4588 | Acc: 81.91% | Best: 82.00% | Time: 15.3s
+Epoch [37/50] | Loss: 0.4532 | Acc: 82.32% | Best: 82.00% | Time: 15.1s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [38/50] | Loss: 0.4476 | Acc: 82.44% | Best: 82.32% | Time: 15.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [39/50] | Loss: 0.4432 | Acc: 82.56% | Best: 82.44% | Time: 15.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [40/50] | Loss: 0.4408 | Acc: 82.40% | Best: 82.56% | Time: 15.1s
+Epoch [41/50] | Loss: 0.4382 | Acc: 82.37% | Best: 82.56% | Time: 15.3s
+Epoch [42/50] | Loss: 0.4364 | Acc: 82.26% | Best: 82.56% | Time: 15.3s
+Epoch [43/50] | Loss: 0.4290 | Acc: 82.49% | Best: 82.56% | Time: 15.1s
+Epoch [44/50] | Loss: 0.4299 | Acc: 82.36% | Best: 82.56% | Time: 15.3s
+Epoch [45/50] | Loss: 0.4311 | Acc: 82.62% | Best: 82.56% | Time: 15.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [46/50] | Loss: 0.4248 | Acc: 82.54% | Best: 82.62% | Time: 15.1s
+Epoch [47/50] | Loss: 0.4244 | Acc: 82.59% | Best: 82.62% | Time: 15.3s
+Epoch [48/50] | Loss: 0.4244 | Acc: 82.52% | Best: 82.62% | Time: 15.2s
+Epoch [49/50] | Loss: 0.4241 | Acc: 82.61% | Best: 82.62% | Time: 15.2s
+Epoch [50/50] | Loss: 0.4202 | Acc: 82.59% | Best: 82.62% | Time: 15.2s
+🎉 [UNIFORM] 학습 완전 종료! 최종 정확도: 82.62%
  -> 최종 모델: ./checkpoints\uniform_final.pth
- 🎉 [HOURGLASS] 학습 완전 종료! 최종 정확도: 82.99%
+
+
+
+
+==================== [HOURGLASS] 학습 시작 ====================
+Epoch [1/50] | Loss: 1.5804 | Acc: 55.93% | Best: 0.00% | Time: 15.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [2/50] | Loss: 1.2341 | Acc: 63.03% | Best: 55.93% | Time: 15.1s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [3/50] | Loss: 1.0665 | Acc: 67.00% | Best: 63.03% | Time: 15.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [4/50] | Loss: 0.9721 | Acc: 68.59% | Best: 67.00% | Time: 15.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [5/50] | Loss: 0.9073 | Acc: 70.30% | Best: 68.59% | Time: 15.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [6/50] | Loss: 0.8600 | Acc: 72.24% | Best: 70.30% | Time: 15.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [7/50] | Loss: 0.8153 | Acc: 73.80% | Best: 72.24% | Time: 15.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [8/50] | Loss: 0.7871 | Acc: 74.04% | Best: 73.80% | Time: 15.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [9/50] | Loss: 0.7664 | Acc: 75.41% | Best: 74.04% | Time: 15.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [10/50] | Loss: 0.7426 | Acc: 74.94% | Best: 75.41% | Time: 15.6s
+Epoch [11/50] | Loss: 0.7238 | Acc: 76.19% | Best: 75.41% | Time: 15.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [12/50] | Loss: 0.7109 | Acc: 75.96% | Best: 76.19% | Time: 15.4s
+Epoch [13/50] | Loss: 0.6898 | Acc: 75.69% | Best: 76.19% | Time: 15.4s
+Epoch [14/50] | Loss: 0.6820 | Acc: 77.82% | Best: 76.19% | Time: 15.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [15/50] | Loss: 0.6619 | Acc: 77.34% | Best: 77.82% | Time: 15.3s
+Epoch [16/50] | Loss: 0.6608 | Acc: 77.72% | Best: 77.82% | Time: 15.4s
+Epoch [17/50] | Loss: 0.6457 | Acc: 77.71% | Best: 77.82% | Time: 15.4s
+Epoch [18/50] | Loss: 0.6287 | Acc: 78.73% | Best: 77.82% | Time: 15.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [19/50] | Loss: 0.6195 | Acc: 77.99% | Best: 78.73% | Time: 14.9s
+Epoch [20/50] | Loss: 0.6168 | Acc: 78.00% | Best: 78.73% | Time: 14.7s
+Epoch [21/50] | Loss: 0.6025 | Acc: 78.06% | Best: 78.73% | Time: 14.5s
+Epoch [22/50] | Loss: 0.5956 | Acc: 78.66% | Best: 78.73% | Time: 14.8s
+Epoch [23/50] | Loss: 0.5828 | Acc: 77.95% | Best: 78.73% | Time: 14.6s
+Epoch [24/50] | Loss: 0.5737 | Acc: 78.85% | Best: 78.73% | Time: 14.8s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [25/50] | Loss: 0.5701 | Acc: 79.76% | Best: 78.85% | Time: 14.7s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [26/50] | Loss: 0.5588 | Acc: 78.78% | Best: 79.76% | Time: 14.5s
+Epoch [27/50] | Loss: 0.5559 | Acc: 79.15% | Best: 79.76% | Time: 14.7s
+Epoch [28/50] | Loss: 0.5469 | Acc: 79.73% | Best: 79.76% | Time: 14.3s
+Epoch [29/50] | Loss: 0.5377 | Acc: 80.33% | Best: 79.76% | Time: 14.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [30/50] | Loss: 0.5362 | Acc: 80.19% | Best: 80.33% | Time: 14.4s
+Epoch [31/50] | Loss: 0.5220 | Acc: 79.71% | Best: 80.33% | Time: 15.4s
+Epoch [32/50] | Loss: 0.5207 | Acc: 80.49% | Best: 80.33% | Time: 15.1s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [33/50] | Loss: 0.5114 | Acc: 80.35% | Best: 80.49% | Time: 15.7s
+Epoch [34/50] | Loss: 0.5061 | Acc: 80.63% | Best: 80.49% | Time: 15.2s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [35/50] | Loss: 0.5025 | Acc: 80.96% | Best: 80.63% | Time: 15.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [36/50] | Loss: 0.4973 | Acc: 81.15% | Best: 80.96% | Time: 15.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [37/50] | Loss: 0.4895 | Acc: 80.95% | Best: 81.15% | Time: 15.2s
+Epoch [38/50] | Loss: 0.4862 | Acc: 81.44% | Best: 81.15% | Time: 15.4s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [39/50] | Loss: 0.4838 | Acc: 81.15% | Best: 81.44% | Time: 15.1s
+Epoch [40/50] | Loss: 0.4789 | Acc: 81.18% | Best: 81.44% | Time: 15.4s
+Epoch [41/50] | Loss: 0.4738 | Acc: 81.37% | Best: 81.44% | Time: 15.0s
+Epoch [42/50] | Loss: 0.4679 | Acc: 81.52% | Best: 81.44% | Time: 15.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [43/50] | Loss: 0.4659 | Acc: 81.21% | Best: 81.52% | Time: 15.3s
+Epoch [44/50] | Loss: 0.4679 | Acc: 81.36% | Best: 81.52% | Time: 15.1s
+Epoch [45/50] | Loss: 0.4638 | Acc: 81.48% | Best: 81.52% | Time: 15.5s
+Epoch [46/50] | Loss: 0.4631 | Acc: 81.59% | Best: 81.52% | Time: 15.5s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [47/50] | Loss: 0.4614 | Acc: 81.75% | Best: 81.59% | Time: 15.3s
+  -> 🏆 최고 성능 갱신! Best 모델 저장됨.
+Epoch [48/50] | Loss: 0.4595 | Acc: 81.63% | Best: 81.75% | Time: 15.4s
+Epoch [49/50] | Loss: 0.4586 | Acc: 81.64% | Best: 81.75% | Time: 15.3s
+Epoch [50/50] | Loss: 0.4566 | Acc: 81.68% | Best: 81.75% | Time: 15.3s
+🎉 [HOURGLASS] 학습 완전 종료! 최종 정확도: 81.75%
  -> 최종 모델: ./checkpoints\hourglass_final.pth
