@@ -10,3 +10,5 @@ data_cifar10/
 models/
 !emissions.csv
 !nn_geometry_power_log.csv
+*.onnx
+*.data

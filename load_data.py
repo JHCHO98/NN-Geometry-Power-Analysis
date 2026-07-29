@@ -168,8 +168,8 @@ def get_dataloaders(batch_size=128):
     train_dataset = CIFAR10Dataset(train_set, transform=transform_train)
     test_dataset = CIFAR10Dataset(test_set, transform=transform_test)
     
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=2, pin_memory=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=2)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
     
     return train_loader, test_loader
 
