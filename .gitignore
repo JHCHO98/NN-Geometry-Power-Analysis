@@ -12,3 +12,4 @@ models/
 !nn_geometry_power_log.csv
 *.onnx
 *.data
+temp.py
