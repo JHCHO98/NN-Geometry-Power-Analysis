@@ -1,173 +1,63 @@
-from load_data import get_dataloaders
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
-import torch.optim as optim
-import torchvision
-import torchvision.transforms as transforms
-import os
-import time
-import json
-from tqdm import tqdm
 
-# ================== 1. 기존 모델 정의 (그대로 사용) ==================
+
+@dataclass
+class ModelConfig:
+    """CNN 한 개의 구조를 재현 가능하게 기록하는 설정값."""
+
+    depth: int
+    channels: list[int]
+    pools: list[int]
+    pattern: str
+
+    def __new__(cls, depth: int, channels: list[int], pools: list[int], pattern: str):
+        # CIFAR-10 입력은 32 x 32이니까 2배 MaxPool을 5번 적용하면 1 x 1이 되므로, 6번째 pooling은 feature map 크기를 0으로 만들어 모델 생성을 막아야 한다.
+        if len(pools) >= 6:
+            raise ValueError(
+                "CIFAR-10 입력(32x32)에서는 pooling을 최대 5번만 사용할 수 있습니다."
+            )
+        return super().__new__(cls)
+
+    def __post_init__(self) -> None:
+        if self.depth <= 0:
+            raise ValueError("depth는 1 이상의 정수여야 합니다.")
+        if len(self.channels) != self.depth:
+            raise ValueError("channels의 길이는 depth와 같아야 합니다.")
+        if any(channel <= 0 for channel in self.channels):
+            raise ValueError("모든 channel 값은 1 이상이어야 합니다.")
+        if len(set(self.pools)) != len(self.pools):
+            raise ValueError("pools에는 같은 위치를 중복해서 넣을 수 없습니다.")
+        if self.pools != sorted(self.pools):
+            raise ValueError("pools는 오름차순으로 정렬된 Conv 블록 위치여야 합니다.")
+        if any(pool < 1 or pool > self.depth for pool in self.pools):
+            raise ValueError("pool 위치는 1부터 depth 사이여야 합니다.")
+
+
 class FlexibleCNN(nn.Module):
-    def __init__(self, channels:list, pooling:list):
+    """ModelConfig에 따라 생성되는 CIFAR-10용 CNN."""
+
+    def __init__(self, config: ModelConfig):
         super().__init__()
-        layers=[]
-        size=32
-        i_dim=3
+        self.config = config
 
-        for channel,i in enumerate(channels):
-            layers.append(nn.Conv2d(i_dim, channel, kernel_size=3, padding=1))
+        layers: list[nn.Module] = []
+        in_channels = 3
+
+        for block_index, out_channels in enumerate(config.channels, start=1):
+            layers.append(nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1))
             layers.append(nn.ReLU())
-            if (i+1) in pooling:
-                layers.append(nn.MaxPool2d(2,2))
-                size //= 2
-            i_dim = channels
+            if block_index in config.pools:
+                layers.append(nn.MaxPool2d(kernel_size=2, stride=2))
+            in_channels = out_channels
 
+        layers.append(nn.AdaptiveAvgPool2d((1, 1)))
         self.features = nn.Sequential(*layers)
-        self.classifier = nn.Linear(i_dim * size * size, 10)
+        self.classifier = nn.Linear(in_channels, 10)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.features(x)
         x = torch.flatten(x, 1)
-        x = self.classifier(x)
-        return x
-
-# ================== 2. 학습 설정 ==================
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-EPOCHS = 50
-BATCH_SIZE = 128
-LR = 0.001
-CHECKPOINT_DIR = "./checkpoints"
-os.makedirs(CHECKPOINT_DIR, exist_ok=True)
-
-modes = ['deep_narrow', 'shallow_wide', 'mid_balanced', 'funnel_wide_to_narrow', 'uniform', 'hourglass']
-
-# CIFAR-10 데이터
-transform_train = transforms.Compose([
-    transforms.RandomCrop(32, padding=4),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-])
-transform_test = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-])
-
-
-
-def train_one_epoch(model, loader, criterion, optimizer):
-    model.train()
-    running_loss = 0
-    pbar = tqdm(loader, leave=False)
-    for inputs, targets in pbar:
-        inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
-        optimizer.zero_grad()
-        outputs = model(inputs)
-        loss = criterion(outputs, targets)
-        loss.backward()
-        optimizer.step()
-        running_loss += loss.item()
-        pbar.set_description(f"Loss: {loss.item():.4f}")
-    return running_loss / len(loader)
-
-def evaluate(model, loader):
-    model.eval()
-    correct = 0
-    total = 0
-    with torch.no_grad():
-        for inputs, targets in loader:
-            inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
-            outputs = model(inputs)
-            _, predicted = outputs.max(1)
-            total += targets.size(0)
-            correct += predicted.eq(targets).sum().item()
-    return 100. * correct / total
-
-
-if __name__ == "__main__":
-    
-    print(f"Using device: {DEVICE}")
-    trainloader,testloader = get_dataloaders(batch_size=BATCH_SIZE)
-
-    print('✅ 데이터 로딩 완료!')
-    # ================== 3. 메인 학습 루프 ==================
-    for mode in modes:
-        print(f"\n{'='*20} [{mode.upper()}] 학습 시작 {'='*20}")
-        
-        # 파일 경로 정의
-        final_path = os.path.join(CHECKPOINT_DIR, f"{mode}_final.pth")
-        best_path = os.path.join(CHECKPOINT_DIR, f"{mode}_best.pth")
-        checkpoint_path = os.path.join(CHECKPOINT_DIR, f"{mode}_checkpoint.pth")
-
-        # 1. 이미 완료된 모델은 스킵
-        if os.path.exists(final_path):
-            print(f"✅ [{mode}]는 이미 학습 완료되어 스킵합니다.")
-            continue
-
-        model = FlexibleCNN(mode=mode).to(DEVICE)
-        criterion = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(model.parameters(), lr=LR)
-        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
-
-        start_epoch = 0
-        best_acc = 0.0
-
-        # 2. 중간에 멈춘 기록이 있으면 이어서 학습 (Resume)
-        if os.path.exists(checkpoint_path):
-            print(f"🔄 [{mode}] 체크포인트 발견! 이어서 학습합니다.")
-            checkpoint = torch.load(checkpoint_path, map_location=DEVICE)
-            model.load_state_dict(checkpoint['model_state'])
-            optimizer.load_state_dict(checkpoint['optimizer_state'])
-            scheduler.load_state_dict(checkpoint['scheduler_state'])
-            start_epoch = checkpoint['epoch'] + 1
-            best_acc = checkpoint['best_acc']
-            print(f" -> {start_epoch} 에폭부터 재개 (현재 최고 정확도: {best_acc:.2f}%)")
-
-        # 3. 학습 시작
-        for epoch in range(start_epoch, EPOCHS):
-            try:
-                start_time = time.time()
-                train_loss = train_one_epoch(model, trainloader, criterion, optimizer)
-                val_acc = evaluate(model, testloader)
-                scheduler.step()
-                
-                epoch_time = time.time() - start_time
-                print(f"Epoch [{epoch+1}/{EPOCHS}] | Loss: {train_loss:.4f} | Acc: {val_acc:.2f}% | Best: {best_acc:.2f}% | Time: {epoch_time:.1f}s")
-
-                # 최고 성능 모델 저장
-                if val_acc > best_acc:
-                    best_acc = val_acc
-                    torch.save(model.state_dict(), best_path)
-                    print(f"  -> 🏆 최고 성능 갱신! Best 모델 저장됨.")
-
-                # 매 에폭마다 체크포인트 저장 (불상사 방지)
-                torch.save({
-                    'epoch': epoch,
-                    'model_state': model.state_dict(),
-                    'optimizer_state': optimizer.state_dict(),
-                    'scheduler_state': scheduler.state_dict(),
-                    'best_acc': best_acc,
-                }, checkpoint_path)
-
-            except KeyboardInterrupt:
-                print("\n\n🛑 사용자 중단 감지! 현재 상태 저장 후 종료합니다.")
-                torch.save({
-                    'epoch': epoch,
-                    'model_state': model.state_dict(),
-                    'optimizer_state': optimizer.state_dict(),
-                    'scheduler_state': scheduler.state_dict(),
-                    'best_acc': best_acc,
-                }, checkpoint_path)
-                exit()
-
-        # 4. 해당 모델 학습 완료 처리
-        torch.save(model.state_dict(), final_path)
-        if os.path.exists(checkpoint_path):
-            os.remove(checkpoint_path) # 완료되었으니 중간 체크포인트 삭제
-        print(f"🎉 [{mode.upper()}] 학습 완전 종료! 최종 정확도: {best_acc:.2f}%")
-        print(f" -> 최종 모델: {final_path}")
-
-    print("\n\n✅ 모든 모델 학습이 완료되었습니다!")
+        return self.classifier(x)
