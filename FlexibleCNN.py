@@ -11,74 +11,23 @@ from tqdm import tqdm
 
 # ================== 1. 기존 모델 정의 (그대로 사용) ==================
 class FlexibleCNN(nn.Module):
-    def __init__(self, mode='standard'):
+    def __init__(self, channels:list, pooling:list):
         super().__init__()
-        if mode == 'deep_narrow':
-            # 1. Deep & Narrow: 층은 깊고(5층) 채널은 좁음 (총 107,502 파라미터)
-            self.features = nn.Sequential(
-                nn.Conv2d(3, 24, kernel_size=3, padding=1), nn.ReLU(),
-                nn.Conv2d(24, 24, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2),
-                nn.Conv2d(24, 56, kernel_size=3, padding=1), nn.ReLU(),
-                nn.Conv2d(56, 56, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2),
-                nn.Conv2d(56, 92, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2)
-            )
-            self.classifier = nn.Linear(92 * 4 * 4, 10)
-        elif mode == 'shallow_wide':
-            # 2. Shallow & Wide: 층은 얕고(2층) 채널은 매우 넓음 (총 106,930 파라미터)
-            self.features = nn.Sequential(
-                nn.Conv2d(3, 99, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(4, 4),
-                nn.Conv2d(99, 99, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2)
-            )
-            self.classifier = nn.Linear(99 * 4 * 4, 10)
-        elif mode == 'mid_balanced':
-            # 3. Mid-Balanced: 깊이(3층)와 너비 모두 균형 잡힌 구조 (총 107,502 파라미터)
-            self.features = nn.Sequential(
-                nn.Conv2d(3, 38, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2),
-                nn.Conv2d(38, 74, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2),
-                nn.Conv2d(74, 98, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2)
-            )
-            self.classifier = nn.Linear(98 * 4 * 4, 10)
-        elif mode == 'funnel_wide_to_narrow':
-            # 4. Funnel Shape: 초반에 넓고 갈수록 좁아지는 깔대기 구조 (총 107,516 파라미터)
-            self.features = nn.Sequential(
-                nn.Conv2d(3, 120, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2),
-                nn.Conv2d(120, 70, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2),
-                nn.Conv2d(70, 36, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2)
-            )
-            self.classifier = nn.Linear(36 * 4 * 4, 10)
-        elif mode == 'uniform':
-            # 5. Uniform: 모든 층의 채널 수가 동일한 균일 구조 (총 107,002 파라미터)
-            self.features = nn.Sequential(
-                nn.Conv2d(3, 72, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2),
-                nn.Conv2d(72, 72, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2),
-                nn.Conv2d(72, 72, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2)
-            )
-            self.classifier = nn.Linear(72 * 4 * 4, 10)
-        elif mode == 'hourglass':
-            # 6. Hourglass: 넓다 -> 좁다(병목) -> 다시 넓어지는 모래시계 구조 (총 107,502 파라미터)
-            self.features = nn.Sequential(
-                nn.Conv2d(3, 136, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2),
-                nn.Conv2d(136, 28, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2),
-                nn.Conv2d(28, 168, kernel_size=3, padding=1), nn.ReLU(),
-                nn.MaxPool2d(2, 2)
-            )
-            self.classifier = nn.Linear(168 * 4 * 4, 10)
+        layers=[]
+        size=32
+        i_dim=3
+
+        for channel,i in enumerate(channels):
+            layers.append(nn.Conv2d(i_dim, channel, kernel_size=3, padding=1))
+            layers.append(nn.ReLU())
+            if (i+1) in pooling:
+                layers.append(nn.MaxPool2d(2,2))
+                size //= 2
+            i_dim = channels
+
+        self.features = nn.Sequential(*layers)
+        self.classifier = nn.Linear(i_dim * size * size, 10)
+
     def forward(self, x):
         x = self.features(x)
         x = torch.flatten(x, 1)
