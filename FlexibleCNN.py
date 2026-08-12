@@ -1,7 +1,110 @@
 from dataclasses import dataclass
+import math
+import random
 
 import torch
 import torch.nn as nn
+
+
+CHANNEL_PATTERNS = {
+    "uniform",
+    "increasing",
+    "decreasing",
+    "hourglass",
+    "inverse_hourglass",
+}
+GROWTH_PATTERNS = {"linear", "early", "late"}
+
+
+def generate_channels(
+    depth: int,
+    pattern: str,
+    growth_pattern: str = "linear",
+    noise_ratio: float = 0.0,
+    min_channels: int = 32,
+    max_channels: int = 128
+) -> list[int]:
+    """Generate CNN channel widths while preserving the requested geometry.
+
+    ``growth_pattern`` controls how quickly a curve changes: ``early`` changes
+    quickly near its start, ``late`` changes quickly near its end, and
+    ``linear`` changes at a constant rate.  Noise is applied only to internal
+    layers, then each shape is corrected so noise cannot alter its geometry.
+    """
+    if depth <= 0:
+        raise ValueError("depth must be a positive integer.")
+    if pattern not in CHANNEL_PATTERNS:
+        raise ValueError(f"Unknown pattern: {pattern}. Expected one of {sorted(CHANNEL_PATTERNS)}.")
+    if growth_pattern not in GROWTH_PATTERNS:
+        raise ValueError(
+            f"Unknown growth_pattern: {growth_pattern}. "
+            f"Expected one of {sorted(GROWTH_PATTERNS)}."
+        )
+    if not 0.0 <= noise_ratio < 1.0:
+        raise ValueError("noise_ratio must be in the range [0.0, 1.0).")
+    if min_channels <= 0 or max_channels <= 0 or min_channels > max_channels:
+        raise ValueError("Channel bounds must satisfy 0 < min_channels <= max_channels.")
+
+    generator = random.Random(42)
+
+    def curve(t: float) -> float:
+        if growth_pattern == "early":
+            return math.sqrt(t)
+        if growth_pattern == "late":
+            return t**2
+        return t
+
+    def interpolate(t: float) -> float:
+        return min_channels + (max_channels - min_channels) * curve(t)
+
+    if pattern == "uniform":
+        # A uniform model is an explicit control group, so it remains noiseless.
+        channels = [round((min_channels + max_channels) / 2)] * depth
+    elif depth == 1:
+        channels = [min_channels]
+    else:
+        positions = [index / (depth - 1) for index in range(depth)]
+        if pattern == "increasing":
+            channels = [round(interpolate(t)) for t in positions]
+        elif pattern == "decreasing":
+            channels = [round(interpolate(1.0 - t)) for t in positions]
+        elif pattern == "hourglass":
+            channels = [round(interpolate(abs(2 * t - 1))) for t in positions]
+        else:  # inverse_hourglass
+            channels = [round(interpolate(1.0 - abs(2 * t - 1))) for t in positions]
+
+    for index in range(1, depth - 1):
+        if pattern != "uniform" and noise_ratio:
+            multiplier = generator.uniform(1.0 - noise_ratio, 1.0 + noise_ratio)
+            channels[index] = round(channels[index] * multiplier)
+        channels[index] = min(max(channels[index], min_channels), max_channels)
+
+    if pattern == "increasing":
+        channels = sorted(channels)
+    elif pattern == "decreasing":
+        channels = sorted(channels, reverse=True)
+    elif pattern == "hourglass":
+        midpoint = depth // 2
+        if depth % 2:
+            channels[midpoint] = min_channels
+            channels[:midpoint] = sorted(channels[:midpoint], reverse=True)
+            channels[midpoint + 1 :] = sorted(channels[midpoint + 1 :])
+        else:
+            channels[midpoint - 1 : midpoint + 1] = [min_channels, min_channels]
+            channels[: midpoint - 1] = sorted(channels[: midpoint - 1], reverse=True)
+            channels[midpoint + 1 :] = sorted(channels[midpoint + 1 :])
+    elif pattern == "inverse_hourglass":
+        midpoint = depth // 2
+        if depth % 2:
+            channels[midpoint] = max_channels
+            channels[:midpoint] = sorted(channels[:midpoint])
+            channels[midpoint + 1 :] = sorted(channels[midpoint + 1 :], reverse=True)
+        else:
+            channels[midpoint - 1 : midpoint + 1] = [max_channels, max_channels]
+            channels[: midpoint - 1] = sorted(channels[: midpoint - 1])
+            channels[midpoint + 1 :] = sorted(channels[midpoint + 1 :], reverse=True)
+
+    return channels
 
 
 @dataclass
