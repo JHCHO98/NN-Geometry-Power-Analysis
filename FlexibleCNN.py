@@ -11,14 +11,14 @@ CHANNEL_PATTERNS = {
     "increasing",
     "decreasing",
     "hourglass",
-    "inverse_hourglass",
+    "inverse_hourglass"
 }
 GROWTH_PATTERNS = {"linear", "early", "late"}
-
 
 def generate_channels(
     depth: int,
     pattern: str,
+    seed: int,
     growth_pattern: str = "linear",
     noise_ratio: float = 0.0,
     min_channels: int = 32,
@@ -45,7 +45,7 @@ def generate_channels(
     if min_channels <= 0 or max_channels <= 0 or min_channels > max_channels:
         raise ValueError("Channel bounds must satisfy 0 < min_channels <= max_channels.")
 
-    generator = random.Random(42)
+    generator = random.Random(seed)
 
     def curve(t: float) -> float:
         if growth_pattern == "early":
@@ -106,6 +106,40 @@ def generate_channels(
 
     return channels
 
+def generate_pools(
+    depth:int,
+    pool_count:int,
+    seed:int
+) -> list[int]:
+    if depth <= 0:
+        raise ValueError("depth must be a positive integer.")
+    if pool_count > depth:
+        raise ValueError("pooling count must be smaller than depth.")
+    if pool_count > 5:
+        raise ValueError("pooling count must be smaller than 6 in cifar-10 dataset.")
+
+    rng = random.Random(seed)
+
+    return sorted(rng.sample(list(range(1, depth + 1)), pool_count))
+
+
+def count_parameters(channels: list[int], input_channels: int = 3, num_classes: int = 10) -> int:
+    """Return the exact trainable-parameter count of ``FlexibleCNN``.
+
+    Each Conv2d and the final Linear layer use PyTorch's default bias=True,
+    so their bias parameters are included in the calculation.
+    """
+    if not channels:
+        raise ValueError("channels must contain at least one layer.")
+
+    total = 0
+    previous_channels = input_channels
+    for output_channels in channels:
+        total += output_channels * (previous_channels * 3 * 3 + 1)
+        previous_channels = output_channels
+    total += previous_channels * num_classes + num_classes
+    return total
+
 
 @dataclass
 class ModelConfig:
@@ -115,14 +149,12 @@ class ModelConfig:
     channels: list[int]
     pools: list[int]
     pattern: str
-
-    def __new__(cls, depth: int, channels: list[int], pools: list[int], pattern: str):
-        # CIFAR-10 입력은 32 x 32이니까 2배 MaxPool을 5번 적용하면 1 x 1이 되므로, 6번째 pooling은 feature map 크기를 0으로 만들어 모델 생성을 막아야 한다.
-        if len(pools) >= 6:
-            raise ValueError(
-                "CIFAR-10 입력(32x32)에서는 pooling을 최대 5번만 사용할 수 있습니다."
-            )
-        return super().__new__(cls)
+    growth_pattern: str
+    noise_ratio: float
+    min_channels: int
+    max_channels: int
+    seed: int
+    parameter_count: int
 
     def __post_init__(self) -> None:
         if self.depth <= 0:
@@ -131,13 +163,14 @@ class ModelConfig:
             raise ValueError("channels의 길이는 depth와 같아야 합니다.")
         if any(channel <= 0 for channel in self.channels):
             raise ValueError("모든 channel 값은 1 이상이어야 합니다.")
+        if len(self.pools) > 5:
+            raise ValueError("CIFAR-10 input supports at most five pooling operations.")
         if len(set(self.pools)) != len(self.pools):
             raise ValueError("pools에는 같은 위치를 중복해서 넣을 수 없습니다.")
         if self.pools != sorted(self.pools):
             raise ValueError("pools는 오름차순으로 정렬된 Conv 블록 위치여야 합니다.")
         if any(pool < 1 or pool > self.depth for pool in self.pools):
             raise ValueError("pool 위치는 1부터 depth 사이여야 합니다.")
-
 
 class FlexibleCNN(nn.Module):
     """ModelConfig에 따라 생성되는 CIFAR-10용 CNN."""
@@ -164,3 +197,94 @@ class FlexibleCNN(nn.Module):
         x = self.features(x)
         x = torch.flatten(x, 1)
         return self.classifier(x)
+
+def random_config(
+    seed: int,
+    depth: int,
+    pattern: str,
+    growth_pattern: str,
+    noise_ratio: float,
+    pool_count: int,
+    min_channel_lower: int = 8,
+    min_channel_upper: int = 96,
+    max_channel_limit: int = 256,
+    min_parameters: int | None = 5_000,
+    max_parameters: int | None = 2_000_000,
+    max_attempts: int = 1_000,
+) -> ModelConfig:
+    """Create one reproducible CNN configuration.
+
+    The same config seed always produces the same channel bounds, noisy channel
+    sequence, and pooling positions. ``min_channels`` and ``max_channels`` are
+    sampled per model so the dataset includes both small and large CNNs.
+    Candidates outside the requested parameter-count range are discarded.
+    """
+    if min_channel_lower <= 0 or min_channel_lower > min_channel_upper:
+        raise ValueError("Invalid minimum-channel sampling range.")
+    if min_channel_upper > max_channel_limit:
+        raise ValueError("min_channel_upper cannot exceed max_channel_limit.")
+    if min_parameters is not None and min_parameters < 0:
+        raise ValueError("min_parameters must be non-negative.")
+    if max_parameters is not None and max_parameters < 0:
+        raise ValueError("max_parameters must be non-negative.")
+    if (
+        min_parameters is not None
+        and max_parameters is not None
+        and min_parameters > max_parameters
+    ):
+        raise ValueError("min_parameters cannot exceed max_parameters.")
+    if max_attempts <= 0:
+        raise ValueError("max_attempts must be positive.")
+
+    master_rng = random.Random(seed)
+    for _ in range(max_attempts):
+        min_channels = master_rng.randint(min_channel_lower, min_channel_upper)
+
+        # Uniform is a true control group: every layer has one sampled width.
+        max_channels = (
+            min_channels
+            if pattern == "uniform"
+            else master_rng.randint(min_channels, max_channel_limit)
+        )
+        channels = generate_channels(
+            depth=depth,
+            pattern=pattern,
+            seed=master_rng.randrange(2**63),
+            growth_pattern=growth_pattern,
+            noise_ratio=noise_ratio,
+            min_channels=min_channels,
+            max_channels=max_channels,
+        )
+        parameter_count = count_parameters(channels)
+        if min_parameters is not None and parameter_count < min_parameters:
+            continue
+        if max_parameters is not None and parameter_count > max_parameters:
+            continue
+
+        pools = generate_pools(
+            depth=depth,
+            pool_count=pool_count,
+            seed=master_rng.randrange(2**63),
+        )
+        return ModelConfig(
+            depth=depth,
+            channels=channels,
+            pools=pools,
+            pattern=pattern,
+            growth_pattern=growth_pattern,
+            noise_ratio=noise_ratio,
+            min_channels=min_channels,
+            max_channels=max_channels,
+            seed=seed,
+            parameter_count=parameter_count,
+        )
+
+    raise ValueError(
+        f"No configuration satisfied the parameter range after {max_attempts} attempts. "
+        "Widen the range or adjust the channel bounds."
+    )
+
+
+
+if __name__ == "__main__":
+    pass
