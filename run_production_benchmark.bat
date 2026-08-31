@@ -23,7 +23,7 @@ set "READY_WAIT_SEC=5"
 set "RESULT_CSV=measurements\benchmark_runs\production_benchmark_runs.csv"
 
 rem P-core logical processor number. Leave empty only if affinity is not used.
-set "CPU_CORE=8"
+set "CPU_CORE=0"
 
 set "SCRIPT_DIR=%~dp0"
 set "PYTHON_EXE=%SCRIPT_DIR%.venv\Scripts\python.exe"

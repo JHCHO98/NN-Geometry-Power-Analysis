@@ -25,7 +25,7 @@ set "RESULT_CSV=measurements\benchmark_runs\pilot_benchmark_runs.csv"
 
 rem Leave CPU_CORE empty to use Windows scheduling. Once you have found
 rem a P-core logical processor number, e.g. 0, set CPU_CORE=0 here.
-set "CPU_CORE=8"
+set "CPU_CORE=0"
 
 set "SCRIPT_DIR=%~dp0"
 set "PYTHON_EXE=%SCRIPT_DIR%.venv\Scripts\python.exe"
