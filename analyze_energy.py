@@ -130,7 +130,7 @@ def parse_hwinfolog(
         else:
             timestamp_text = frame[date_name].astype(str) + " " + frame[time_name].astype(str)
 
-    timestamps = pd.to_datetime(timestamp_text, errors="coerce")
+    timestamps = pd.to_datetime(timestamp_text, errors="coerce", dayfirst=True)
     if timestamps.isna().all():
         raise ValueError("Could not parse any HWiNFO timestamps. Specify timestamp columns explicitly.")
     if timestamps.dt.tz is None:
