@@ -23,9 +23,9 @@ set "COOLDOWN_SEC=60"
 set "READY_WAIT_SEC=5"
 set "RESULT_CSV=measurements\benchmark_runs\pilot_benchmark_runs.csv"
 
-rem Leave CPU_CORE empty to use Windows scheduling. Once you have found
-rem a P-core logical processor number, e.g. 0, set CPU_CORE=0 here.
-set "CPU_CORE=8"
+rem i7-1165G7 has logical CPUs 0 through 7 and no P-core/E-core split.
+rem Use one fixed logical CPU; leave empty only to use Windows scheduling.
+set "CPU_CORE=0"
 
 set "SCRIPT_DIR=%~dp0"
 set "PYTHON_EXE=%SCRIPT_DIR%.venv\Scripts\python.exe"

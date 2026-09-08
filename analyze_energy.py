@@ -25,8 +25,6 @@ TRIAL_FIELDS = [
     "inference_count",
     "sample_count",
     "average_power_w",
-    "gross_energy_j",
-    "gross_energy_per_inference_j",
     "baseline_power_w",
     "baseline_source",
     "net_energy_j",
@@ -47,7 +45,6 @@ SUMMARY_FIELDS = [
     "mean_net_energy_per_inference_j",
     "std_net_energy_per_inference_j",
     "cv_percent",
-    "mean_gross_energy_per_inference_j",
     "mean_average_latency_ms",
     "mean_throughput_inferences_per_sec",
     "depth",
@@ -211,7 +208,8 @@ def write_csv(path: Path, fieldnames: list[str], rows: list[dict[str, object]]) 
     with path.open("w", encoding="utf-8", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerows(rows)
+        for row in rows:
+            writer.writerow({field: row.get(field, "") for field in fieldnames})
 
 
 def build_idle_blocks(
@@ -224,7 +222,7 @@ def build_idle_blocks(
     def finish_block() -> None:
         if not current:
             return
-        energy = sum(float(row["gross_energy_j"]) for row in current)
+        energy = sum(float(row["_gross_energy_j"]) for row in current)
         duration = sum(float(row["actual_duration_sec"]) for row in current)
         first_trial = trial_lookup[int(current[0]["run_row"])]
         last_trial = trial_lookup[int(current[-1]["run_row"])]
@@ -318,8 +316,7 @@ def main() -> None:
             "throughput_inferences_per_sec": trial.throughput or "",
             "sample_count": "",
             "average_power_w": "",
-            "gross_energy_j": "",
-            "gross_energy_per_inference_j": "",
+            "_gross_energy_j": "",
             "baseline_power_w": "",
             "baseline_source": "",
             "net_energy_j": "",
@@ -338,10 +335,7 @@ def main() -> None:
                 {
                     "sample_count": sample_count,
                     "average_power_w": average_power,
-                    "gross_energy_j": gross_energy,
-                    "gross_energy_per_inference_j": (
-                        gross_energy / trial.inference_count if trial.inference_count else ""
-                    ),
+                    "_gross_energy_j": gross_energy,
                     "status": "valid",
                 }
             )
@@ -358,11 +352,11 @@ def main() -> None:
         else:
             baseline = interpolated_baseline(trial_lookup[int(row["run_row"])], idle_blocks)
         if baseline is None:
-            row["status"] = "valid_gross_only: no idle baseline"
+            row["status"] = "excluded: no idle baseline"
             continue
         baseline_power, baseline_source = baseline
         used_baselines.append(baseline_power)
-        net_energy = float(row["gross_energy_j"]) - baseline_power * float(row["actual_duration_sec"])
+        net_energy = float(row["_gross_energy_j"]) - baseline_power * float(row["actual_duration_sec"])
         row["baseline_power_w"] = baseline_power
         row["baseline_source"] = baseline_source
         row["net_energy_j"] = net_energy
@@ -375,7 +369,6 @@ def main() -> None:
             by_model.setdefault(str(row["model_id"]), []).append(row)
     for model_id, rows in sorted(by_model.items()):
         net_values = [float(row["net_energy_per_inference_j"]) for row in rows]
-        gross_values = [float(row["gross_energy_per_inference_j"]) for row in rows]
         latency_values = [float(row["average_latency_ms"]) for row in rows if row["average_latency_ms"] != ""]
         throughput_values = [float(row["throughput_inferences_per_sec"]) for row in rows if row["throughput_inferences_per_sec"] != ""]
         net_mean = mean(net_values)
@@ -388,7 +381,6 @@ def main() -> None:
                 "mean_net_energy_per_inference_j": net_mean,
                 "std_net_energy_per_inference_j": net_std,
                 "cv_percent": net_std / net_mean * 100 if net_mean else "",
-                "mean_gross_energy_per_inference_j": mean(gross_values),
                 "mean_average_latency_ms": mean(latency_values) if latency_values else "",
                 "mean_throughput_inferences_per_sec": mean(throughput_values) if throughput_values else "",
                 "depth": exemplar["depth"],
@@ -407,7 +399,7 @@ def main() -> None:
     print(f"Wrote {trial_output}")
     print(f"Wrote {summary_output}")
     if not used_baselines:
-        print("No valid idle baseline was found: only gross energy is available.")
+        print("No valid idle baseline was found: no net-energy results were produced.")
     else:
         print(f"Mean baseline power applied: {mean(used_baselines):.6f} W")
 

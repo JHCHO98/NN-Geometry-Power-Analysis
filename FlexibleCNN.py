@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 import math
 import random
-
 import torch
 import torch.nn as nn
 
@@ -283,7 +282,6 @@ def random_config(
         f"No configuration satisfied the parameter range after {max_attempts} attempts. "
         "Widen the range or adjust the channel bounds."
     )
-
 
 
 if __name__ == "__main__":
