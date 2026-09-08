@@ -6,7 +6,6 @@ data_cache/
 data/
 checkpoints/
 data_cifar10/
-**/*.csv
 models/
 !emissions.csv
 !nn_geometry_power_log.csv
