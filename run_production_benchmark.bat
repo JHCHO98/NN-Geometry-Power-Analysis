@@ -20,7 +20,8 @@ set "WARMUP_COUNT=200"
 set "DURATION_SEC=60"
 set "COOLDOWN_SEC=60"
 set "READY_WAIT_SEC=5"
-set "RESULT_CSV=measurements\benchmark_runs\production_runs_40_100.csv"
+rem Result name follows the existing production_runs_START_END.csv convention.
+set "RESULT_CSV=measurements\benchmark_runs\production_runs_%START_ID%_%END_ID%.csv"
 
 rem i7-1165G7 has logical CPUs 0 through 7 and no P-core/E-core split.
 rem Use one fixed logical CPU; leave empty only if affinity is not used.

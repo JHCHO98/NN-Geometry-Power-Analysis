@@ -212,6 +212,71 @@ def write_csv(path: Path, fieldnames: list[str], rows: list[dict[str, object]]) 
             writer.writerow({field: row.get(field, "") for field in fieldnames})
 
 
+def read_existing_trials(path: Path) -> list[dict[str, str]]:
+    """Read prior trial results so subsequent analyses extend them."""
+    if not path.exists():
+        return []
+    with path.open("r", encoding="utf-8-sig", newline="") as file:
+        reader = csv.DictReader(file)
+        if reader.fieldnames is None or not set(TRIAL_FIELDS).issubset(reader.fieldnames):
+            raise ValueError(f"Existing trial output has an incompatible schema: {path}")
+        return list(reader)
+
+
+def trial_identity(row: dict[str, object]) -> tuple[str, ...]:
+    """Return fields that identify one measured interval across analysis runs."""
+    return tuple(
+        str(row.get(field, ""))
+        for field in ("mode", "model_id", "trial", "started_at_local", "finished_at_local")
+    )
+
+
+def append_unique_trials(
+    existing: list[dict[str, object]], new: list[dict[str, object]]
+) -> tuple[list[dict[str, object]], int]:
+    """Append only trial intervals not already present in the processed output."""
+    known = {trial_identity(row) for row in existing}
+    appended = [row for row in new if trial_identity(row) not in known]
+    combined = existing + appended
+    for run_row, row in enumerate(combined, start=1):
+        row["run_row"] = run_row
+    return combined, len(appended)
+
+
+def build_summaries(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Aggregate all valid inference trials currently stored in the output."""
+    summaries: list[dict[str, object]] = []
+    by_model: dict[str, list[dict[str, object]]] = {}
+    for row in rows:
+        if row["mode"] == "inference" and row["status"] == "valid" and row["net_energy_per_inference_j"] != "":
+            by_model.setdefault(str(row["model_id"]), []).append(row)
+    for model_id, model_rows in sorted(by_model.items()):
+        net_values = [float(row["net_energy_per_inference_j"]) for row in model_rows]
+        latency_values = [float(row["average_latency_ms"]) for row in model_rows if row["average_latency_ms"] != ""]
+        throughput_values = [float(row["throughput_inferences_per_sec"]) for row in model_rows if row["throughput_inferences_per_sec"] != ""]
+        net_mean = mean(net_values)
+        net_std = stdev(net_values) if len(net_values) > 1 else 0.0
+        exemplar = model_rows[0]
+        summaries.append(
+            {
+                "model_id": model_id,
+                "valid_trials": len(model_rows),
+                "mean_net_energy_per_inference_j": net_mean,
+                "std_net_energy_per_inference_j": net_std,
+                "cv_percent": net_std / net_mean * 100 if net_mean else "",
+                "mean_average_latency_ms": mean(latency_values) if latency_values else "",
+                "mean_throughput_inferences_per_sec": mean(throughput_values) if throughput_values else "",
+                "depth": exemplar["depth"],
+                "pattern": exemplar["pattern"],
+                "growth_pattern": exemplar["growth_pattern"],
+                "channels": exemplar["channels"],
+                "pools": exemplar["pools"],
+                "parameter_count": exemplar["parameter_count"],
+            }
+        )
+    return summaries
+
+
 def build_idle_blocks(
     rows: list[dict[str, object]], trial_lookup: dict[int, Trial]
 ) -> list[dict[str, object]]:
@@ -272,7 +337,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hwinfolog", type=Path, required=True)
     parser.add_argument("--benchmark-csv", type=Path, default=Path("pilot_benchmark_runs.csv"))
     parser.add_argument("--structure-csv", type=Path, default=Path("dataset_structure.csv"))
-    parser.add_argument("--output-dir", type=Path, default=Path("measurements/processed"))
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("measurements/processed"),
+        help="Directory containing cumulative energy_trials.csv and energy_summary.csv.",
+    )
     parser.add_argument("--timezone", default="Asia/Seoul")
     parser.add_argument("--power-column")
     parser.add_argument("--timestamp-column")
@@ -362,42 +432,16 @@ def main() -> None:
         row["net_energy_j"] = net_energy
         row["net_energy_per_inference_j"] = net_energy / int(row["inference_count"])
 
-    summaries: list[dict[str, object]] = []
-    by_model: dict[str, list[dict[str, object]]] = {}
-    for row in extracted:
-        if row["mode"] == "inference" and row["status"] == "valid" and row["net_energy_per_inference_j"] != "":
-            by_model.setdefault(str(row["model_id"]), []).append(row)
-    for model_id, rows in sorted(by_model.items()):
-        net_values = [float(row["net_energy_per_inference_j"]) for row in rows]
-        latency_values = [float(row["average_latency_ms"]) for row in rows if row["average_latency_ms"] != ""]
-        throughput_values = [float(row["throughput_inferences_per_sec"]) for row in rows if row["throughput_inferences_per_sec"] != ""]
-        net_mean = mean(net_values)
-        net_std = stdev(net_values) if len(net_values) > 1 else 0.0
-        exemplar = rows[0]
-        summaries.append(
-            {
-                "model_id": model_id,
-                "valid_trials": len(rows),
-                "mean_net_energy_per_inference_j": net_mean,
-                "std_net_energy_per_inference_j": net_std,
-                "cv_percent": net_std / net_mean * 100 if net_mean else "",
-                "mean_average_latency_ms": mean(latency_values) if latency_values else "",
-                "mean_throughput_inferences_per_sec": mean(throughput_values) if throughput_values else "",
-                "depth": exemplar["depth"],
-                "pattern": exemplar["pattern"],
-                "growth_pattern": exemplar["growth_pattern"],
-                "channels": exemplar["channels"],
-                "pools": exemplar["pools"],
-                "parameter_count": exemplar["parameter_count"],
-            }
-        )
-
     trial_output = args.output_dir / "energy_trials.csv"
     summary_output = args.output_dir / "energy_summary.csv"
-    write_csv(trial_output, TRIAL_FIELDS, extracted)
+    existing = read_existing_trials(trial_output)
+    combined_trials, added_trial_count = append_unique_trials(existing, extracted)
+    summaries = build_summaries(combined_trials)
+    write_csv(trial_output, TRIAL_FIELDS, combined_trials)
     write_csv(summary_output, SUMMARY_FIELDS, summaries)
     print(f"Wrote {trial_output}")
     print(f"Wrote {summary_output}")
+    print(f"Added {added_trial_count} new trial rows; total stored trial rows: {len(combined_trials)}.")
     if not used_baselines:
         print("No valid idle baseline was found: no net-energy results were produced.")
     else:
