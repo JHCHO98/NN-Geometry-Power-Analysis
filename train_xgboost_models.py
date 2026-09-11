@@ -164,16 +164,31 @@ def main() -> None:
     features = dataset[feature_columns].copy()
 
     indices = np.arange(len(dataset))
+
+    # Stratification groups: depth × pattern
+    stratify_groups = (
+        dataset["feature_depth"].astype(str)
+        + "_"
+        + dataset["feature_pattern"].astype(str)
+    )
+
+    # First split: 70% train+validation / 15% test
     train_validation, test = ml["train_test_split"](
-        indices, test_size=args.test_size, random_state=args.random_state
+        indices,
+        test_size=args.test_size,
+        random_state=args.random_state,
+        stratify=stratify_groups,
     )
+
+    # Second split: 70% train / 15% validation
     validation_share = args.validation_size / (1.0 - args.test_size)
+
     train, validation = ml["train_test_split"](
-        train_validation, test_size=validation_share, random_state=args.random_state
+        train_validation,
+        test_size=validation_share,
+        random_state=args.random_state,
+        stratify=stratify_groups.iloc[train_validation],
     )
-    split = pd.Series("test", index=dataset.index, name="split")
-    split.iloc[train] = "train"
-    split.iloc[validation] = "validation"
 
     energy_model, energy_preprocessor, energy_predictions, energy_metrics, energy_importance = train_target(
         "energy",
