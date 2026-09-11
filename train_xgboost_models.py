@@ -165,7 +165,7 @@ def main() -> None:
 
     indices = np.arange(len(dataset))
 
-    # Stratification groups: depth × pattern
+# Stratification groups: depth × pattern
     stratify_groups = (
         dataset["feature_depth"].astype(str)
         + "_"
@@ -189,6 +189,9 @@ def main() -> None:
         random_state=args.random_state,
         stratify=stratify_groups.iloc[train_validation],
     )
+    split = pd.Series("test", index=dataset.index, name="split")
+    split.iloc[train] = "train"
+    split.iloc[validation] = "validation"
 
     energy_model, energy_preprocessor, energy_predictions, energy_metrics, energy_importance = train_target(
         "energy",
