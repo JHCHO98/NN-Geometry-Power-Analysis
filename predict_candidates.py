@@ -1,4 +1,4 @@
-"""Predict energy and latency, with bootstrap uncertainty, for CNN candidates."""
+"""Predict energy, latency, and accuracy with bootstrap uncertainty for CNN candidates."""
 
 from __future__ import annotations
 
@@ -10,7 +10,11 @@ import numpy as np
 import pandas as pd
 
 
-TARGET_COLUMNS = {"energy": "target_energy_j", "latency": "target_latency_ms"}
+TARGET_COLUMNS = {
+    "energy": "target_energy_j",
+    "latency": "target_latency_ms",
+    "accuracy": "target_accuracy_percent",
+}
 
 
 @dataclass
@@ -52,18 +56,35 @@ def predict_ensemble(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Return saved-model prediction and bootstrap mean/standard deviation."""
     features = artifact.features
-    point = np.exp(artifact.model.predict(artifact.preprocessor.transform(candidates[features])))
-    target = np.log(measured[TARGET_COLUMNS[artifact.name]].to_numpy(dtype=float))
-    if not np.isfinite(target).all():
+    use_log = artifact.name in ("energy", "latency")
+
+    measured_sub = measured[measured[TARGET_COLUMNS[artifact.name]].notna()].copy()
+    if measured_sub.empty:
+        raise ValueError(f"No valid measured data found for target {artifact.name}.")
+
+    for col in features:
+        if col not in candidates.columns:
+            candidates[col] = np.nan
+        if col not in measured_sub.columns:
+            measured_sub[col] = np.nan
+
+    raw_pred = artifact.model.predict(artifact.preprocessor.transform(candidates[features]))
+    point = np.exp(raw_pred) if use_log else raw_pred
+
+    target_raw = measured_sub[TARGET_COLUMNS[artifact.name]].to_numpy(dtype=float)
+    target = np.log(target_raw) if use_log else target_raw
+
+    if use_log and not np.isfinite(target).all():
         raise ValueError(f"Measured {TARGET_COLUMNS[artifact.name]} must be positive and finite.")
 
     rng = np.random.default_rng(random_state)
     replica_predictions = np.empty((ensemble_size, len(candidates)), dtype=float)
     estimator_count = max(1, int(getattr(artifact.model, "best_iteration", 0)) + 1)
+
     for replica in range(ensemble_size):
-        sampled = rng.integers(0, len(measured), size=len(measured))
+        sampled = rng.integers(0, len(measured_sub), size=len(measured_sub))
         preprocessor = dependencies["clone"](artifact.preprocessor)
-        train = preprocessor.fit_transform(measured.iloc[sampled][features])
+        train = preprocessor.fit_transform(measured_sub.iloc[sampled][features])
         model = dependencies["clone"](artifact.model)
         model.set_params(
             n_estimators=estimator_count,
@@ -71,7 +92,9 @@ def predict_ensemble(
             early_stopping_rounds=None,
         )
         model.fit(train, target[sampled], verbose=False)
-        replica_predictions[replica] = np.exp(model.predict(preprocessor.transform(candidates[features])))
+        sub_pred = model.predict(preprocessor.transform(candidates[features]))
+        replica_predictions[replica] = np.exp(sub_pred) if use_log else sub_pred
+
     return point, replica_predictions.mean(axis=0), replica_predictions.std(axis=0, ddof=1)
 
 
@@ -94,6 +117,7 @@ def main() -> None:
         raise ValueError("--ensemble-size must be at least 2 and --uncertainty-weight must be non-negative.")
     if args.output_csv.exists() and not args.overwrite:
         raise FileExistsError(f"Refusing to overwrite {args.output_csv}. Use --overwrite to replace it.")
+
     dependencies = import_dependencies()
     candidates = pd.read_csv(args.candidates, encoding="utf-8-sig")
     measured = pd.read_csv(args.dataset, encoding="utf-8-sig")
@@ -101,24 +125,45 @@ def main() -> None:
         raise ValueError("Candidate IDs must be unique, and both input CSVs must be non-empty.")
 
     predictions = candidates.copy()
-    for offset, name in enumerate(TARGET_COLUMNS):
-        artifact = load_artifact(args.model_dir / f"{name}_xgboost.joblib", name, dependencies)
-        missing = set(artifact.features).difference(candidates.columns) | set(artifact.features).difference(measured.columns)
-        if missing:
-            raise ValueError(f"{name} feature columns are missing: {sorted(missing)}")
-        point, mean, std = predict_ensemble(
-            artifact, measured, candidates, args.ensemble_size, args.random_state + offset * 10_000, dependencies
-        )
-        unit = "j" if name == "energy" else "ms"
-        predictions[f"predicted_{name}_{unit}"] = point
-        predictions[f"ensemble_{name}_mean_{unit}"] = mean
-        predictions[f"{name}_uncertainty_std_{unit}"] = std
-        predictions[f"{name}_upper_{unit}"] = mean + args.uncertainty_weight * std
-        predictions[f"{name}_relative_uncertainty"] = std / np.maximum(mean, np.finfo(float).eps)
+    w = args.uncertainty_weight
 
-    predictions["combined_relative_uncertainty"] = (
-        predictions["energy_relative_uncertainty"] + predictions["latency_relative_uncertainty"]
-    ) / 2
+    for offset, name in enumerate(TARGET_COLUMNS):
+        model_path = args.model_dir / f"{name}_xgboost.joblib"
+        if not model_path.exists():
+            print(f"Notice: {model_path} not found. Skipping {name} prediction.")
+            continue
+
+        artifact = load_artifact(model_path, name, dependencies)
+        point, mean, std = predict_ensemble(
+            artifact, measured, predictions, args.ensemble_size, args.random_state + offset * 10_000, dependencies
+        )
+
+        if name == "energy":
+            predictions["predicted_energy_j"] = point
+            predictions["ensemble_energy_mean_j"] = mean
+            predictions["energy_uncertainty_std_j"] = std
+            predictions["energy_lower_j"] = np.maximum(1e-9, mean - w * std)
+            predictions["energy_upper_j"] = mean + w * std
+            predictions["energy_relative_uncertainty"] = std / np.maximum(mean, np.finfo(float).eps)
+        elif name == "latency":
+            predictions["predicted_latency_ms"] = point
+            predictions["ensemble_latency_mean_ms"] = mean
+            predictions["latency_uncertainty_std_ms"] = std
+            predictions["latency_lower_ms"] = np.maximum(1e-9, mean - w * std)
+            predictions["latency_upper_ms"] = mean + w * std
+            predictions["latency_relative_uncertainty"] = std / np.maximum(mean, np.finfo(float).eps)
+        elif name == "accuracy":
+            predictions["predicted_accuracy_percent"] = point
+            predictions["ensemble_accuracy_mean_percent"] = mean
+            predictions["accuracy_uncertainty_std_percent"] = std
+            predictions["accuracy_lower_percent"] = mean - w * std
+            predictions["accuracy_upper_percent"] = mean + w * std
+            predictions["accuracy_relative_uncertainty"] = std / np.maximum(mean, np.finfo(float).eps)
+
+    unc_cols = [c for c in predictions.columns if c.endswith("_relative_uncertainty")]
+    if unc_cols:
+        predictions["combined_relative_uncertainty"] = predictions[unc_cols].mean(axis=1)
+
     args.output_csv.parent.mkdir(parents=True, exist_ok=True)
     predictions.to_csv(args.output_csv, index=False, encoding="utf-8")
     print(f"Wrote {args.output_csv} ({len(predictions)} candidates, {args.ensemble_size} bootstrap replicas).")

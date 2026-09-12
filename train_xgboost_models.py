@@ -1,4 +1,4 @@
-"""Train regularized XGBoost models for CNN inference energy and latency."""
+"""Train regularized XGBoost models for CNN inference energy, latency, and accuracy."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ import pandas as pd
 TARGETS = {
     "energy": "target_energy_j",
     "latency": "target_latency_ms",
+    "accuracy": "target_accuracy_percent",
 }
 
 
@@ -47,6 +48,8 @@ def import_ml_dependencies():
 
 
 def regression_metrics(actual: np.ndarray, predicted: np.ndarray, ml: dict[str, object]) -> dict[str, float]:
+    if len(actual) == 0:
+        return {"mae": 0.0, "rmse": 0.0, "r2": 0.0}
     return {
         "mae": float(ml["mean_absolute_error"](actual, predicted)),
         "rmse": float(ml["mean_squared_error"](actual, predicted) ** 0.5),
@@ -59,13 +62,14 @@ def train_target(
     target_column: str,
     features: pd.DataFrame,
     target_values: pd.Series,
-    split: pd.DataFrame,
+    split: pd.Series,
     numeric_columns: list[str],
     categorical_columns: list[str],
     ml: dict[str, object],
     random_state: int,
+    use_log_transform: bool = True,
 ) -> tuple[object, object, pd.Series, dict[str, dict[str, float]], pd.DataFrame]:
-    """Fit one log-target model and return predictions, metrics, and importances."""
+    """Fit one model and return predictions, metrics, and importances."""
     preprocessor = ml["ColumnTransformer"](
         transformers=[
             (
@@ -91,20 +95,28 @@ def train_target(
     transformed_validation = preprocessor.transform(features.loc[validation_mask])
     transformed_all = preprocessor.transform(features)
 
-    target = np.log(target_values.to_numpy(dtype=float))
+    target_raw = target_values.to_numpy(dtype=float)
+    target = np.log(target_raw) if use_log_transform else target_raw
+
+    # Parameter tuning based on dataset size
+    n_samples = len(features.loc[train_mask])
+    max_depth = 3 if n_samples > 100 else 2
+    n_estimators = 1_000 if n_samples > 100 else 300
+    lr = 0.03 if n_samples > 100 else 0.05
+
     model = ml["XGBRegressor"](
         objective="reg:squarederror",
-        n_estimators=1_000,
-        learning_rate=0.03,
-        max_depth=3,
-        min_child_weight=3,
+        n_estimators=n_estimators,
+        learning_rate=lr,
+        max_depth=max_depth,
+        min_child_weight=2 if n_samples < 100 else 3,
         subsample=0.8,
         colsample_bytree=0.8,
         reg_alpha=0.1,
-        reg_lambda=3.0,
+        reg_lambda=2.0 if n_samples < 100 else 3.0,
         random_state=random_state,
         n_jobs=-1,
-        early_stopping_rounds=50,
+        early_stopping_rounds=30 if n_samples < 100 else 50,
     )
     model.fit(
         transformed_train,
@@ -112,11 +124,13 @@ def train_target(
         eval_set=[(transformed_validation, target[validation_mask])],
         verbose=False,
     )
-    predictions = pd.Series(np.exp(model.predict(transformed_all)), index=features.index)
-    actual = target_values.to_numpy(dtype=float)
+
+    pred_raw = model.predict(transformed_all)
+    predictions = pd.Series(np.exp(pred_raw) if use_log_transform else pred_raw, index=features.index)
+
     metrics = {
         subset: regression_metrics(
-            actual[split.to_numpy() == subset],
+            target_raw[split.to_numpy() == subset],
             predictions.to_numpy()[split.to_numpy() == subset],
             ml,
         )
@@ -147,7 +161,8 @@ def main() -> None:
         raise ValueError("--test-size and --validation-size must be between 0 and 0.5.")
     ml = import_ml_dependencies()
     dataset = pd.read_csv(args.dataset, encoding="utf-8-sig")
-    required = {"model_id", *TARGETS.values()}
+
+    required = {"model_id", TARGETS["energy"], TARGETS["latency"]}
     missing = required.difference(dataset.columns)
     if missing:
         raise ValueError(f"Dataset is missing required columns: {sorted(missing)}")
@@ -163,37 +178,24 @@ def main() -> None:
         raise ValueError("Expected both numeric and categorical structure features in model_dataset.csv.")
     features = dataset[feature_columns].copy()
 
+    # Split for Energy & Latency (all models)
     indices = np.arange(len(dataset))
+    stratify_groups = dataset["feature_depth"].astype(str) + "_" + dataset["feature_pattern"].astype(str)
 
-# Stratification groups: depth × pattern
-    stratify_groups = (
-        dataset["feature_depth"].astype(str)
-        + "_"
-        + dataset["feature_pattern"].astype(str)
+    train_val, test = ml["train_test_split"](
+        indices, test_size=args.test_size, random_state=args.random_state, stratify=stratify_groups
+    )
+    val_share = args.validation_size / (1.0 - args.test_size)
+    train, val = ml["train_test_split"](
+        train_val, test_size=val_share, random_state=args.random_state, stratify=stratify_groups.iloc[train_val]
     )
 
-    # First split: 70% train+validation / 15% test
-    train_validation, test = ml["train_test_split"](
-        indices,
-        test_size=args.test_size,
-        random_state=args.random_state,
-        stratify=stratify_groups,
-    )
-
-    # Second split: 70% train / 15% validation
-    validation_share = args.validation_size / (1.0 - args.test_size)
-
-    train, validation = ml["train_test_split"](
-        train_validation,
-        test_size=validation_share,
-        random_state=args.random_state,
-        stratify=stratify_groups.iloc[train_validation],
-    )
     split = pd.Series("test", index=dataset.index, name="split")
     split.iloc[train] = "train"
-    split.iloc[validation] = "validation"
+    split.iloc[val] = "validation"
 
-    energy_model, energy_preprocessor, energy_predictions, energy_metrics, energy_importance = train_target(
+    # Train Energy Model
+    energy_model, energy_preproc, energy_preds, energy_metrics, energy_imp = train_target(
         "energy",
         TARGETS["energy"],
         features,
@@ -203,8 +205,11 @@ def main() -> None:
         categorical_columns,
         ml,
         args.random_state,
+        use_log_transform=True,
     )
-    latency_model, latency_preprocessor, latency_predictions, latency_metrics, latency_importance = train_target(
+
+    # Train Latency Model
+    latency_model, latency_preproc, latency_preds, latency_metrics, latency_imp = train_target(
         "latency",
         TARGETS["latency"],
         features,
@@ -214,37 +219,105 @@ def main() -> None:
         categorical_columns,
         ml,
         args.random_state + 1,
+        use_log_transform=True,
     )
 
+    # Train Accuracy Model (if target_accuracy_percent exists and has valid rows)
+    accuracy_metrics = None
+    accuracy_preds = pd.Series(np.nan, index=dataset.index)
+    accuracy_imp = pd.DataFrame(columns=["feature", "accuracy_importance"])
+
+    if TARGETS["accuracy"] in dataset.columns:
+        acc_mask = dataset[TARGETS["accuracy"]].notna()
+        acc_dataset = dataset[acc_mask].copy()
+
+        if len(acc_dataset) >= 15:
+            print(f"\nTraining Accuracy Model on {len(acc_dataset)} annotated models...")
+            acc_features = features.loc[acc_mask].copy()
+            acc_stratify = acc_dataset["feature_pattern"].astype(str)
+
+            acc_indices = np.arange(len(acc_dataset))
+            acc_train_val, acc_test = ml["train_test_split"](
+                acc_indices, test_size=args.test_size, random_state=args.random_state, stratify=acc_stratify
+            )
+            acc_val_share = args.validation_size / (1.0 - args.test_size)
+            acc_train, acc_val = ml["train_test_split"](
+                acc_train_val,
+                test_size=acc_val_share,
+                random_state=args.random_state,
+                stratify=acc_stratify.iloc[acc_train_val],
+            )
+
+            acc_split = pd.Series("test", index=acc_dataset.index, name="split")
+            acc_split.iloc[acc_train] = "train"
+            acc_split.iloc[acc_val] = "validation"
+
+            accuracy_model, accuracy_preproc, acc_sub_preds, accuracy_metrics, accuracy_imp = train_target(
+                "accuracy",
+                TARGETS["accuracy"],
+                acc_features,
+                acc_dataset[TARGETS["accuracy"]],
+                acc_split,
+                numeric_columns,
+                categorical_columns,
+                ml,
+                args.random_state + 2,
+                use_log_transform=False,
+            )
+            
+            # Predict for ALL models in dataset
+            all_acc_preds = accuracy_model.predict(accuracy_preproc.transform(features))
+            accuracy_preds = pd.Series(all_acc_preds, index=dataset.index)
+
+            ml["joblib"].dump(
+                {"model": accuracy_model, "preprocessor": accuracy_preproc, "features": feature_columns},
+                args.output_dir / "accuracy_xgboost.joblib",
+            )
+
+    # Save Output Artifacts
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    predictions = dataset[["model_id", *TARGETS.values(), "target_energy_cv_percent"]].copy()
+    predictions = dataset[["model_id", TARGETS["energy"], TARGETS["latency"]]].copy()
     predictions["split"] = split
-    predictions["predicted_energy_j"] = energy_predictions
-    predictions["predicted_latency_ms"] = latency_predictions
-    predictions["energy_residual_j"] = predictions["target_energy_j"] - predictions["predicted_energy_j"]
-    predictions["latency_residual_ms"] = predictions["target_latency_ms"] - predictions["predicted_latency_ms"]
+    predictions["predicted_energy_j"] = energy_preds
+    predictions["predicted_latency_ms"] = latency_preds
+
+    if TARGETS["accuracy"] in dataset.columns:
+        predictions[TARGETS["accuracy"]] = dataset[TARGETS["accuracy"]]
+        predictions["predicted_accuracy_percent"] = accuracy_preds
+
     predictions.to_csv(args.output_dir / "model_predictions.csv", index=False, encoding="utf-8")
 
-    importance = energy_importance.merge(latency_importance, on="feature", how="outer").fillna(0)
+    importance = energy_imp.merge(latency_imp, on="feature", how="outer").fillna(0)
+    if not accuracy_imp.empty:
+        importance = importance.merge(accuracy_imp, on="feature", how="outer").fillna(0)
     importance.to_csv(args.output_dir / "feature_importance.csv", index=False, encoding="utf-8")
+
     metrics = {"energy": energy_metrics, "latency": latency_metrics}
-    (args.output_dir / "model_metrics.json").write_text(
-        json.dumps(metrics, indent=2), encoding="utf-8"
-    )
+    if accuracy_metrics is not None:
+        metrics["accuracy"] = accuracy_metrics
+
+    (args.output_dir / "model_metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
+
     ml["joblib"].dump(
-        {"model": energy_model, "preprocessor": energy_preprocessor, "features": feature_columns},
+        {"model": energy_model, "preprocessor": energy_preproc, "features": feature_columns},
         args.output_dir / "energy_xgboost.joblib",
     )
     ml["joblib"].dump(
-        {"model": latency_model, "preprocessor": latency_preprocessor, "features": feature_columns},
+        {"model": latency_model, "preprocessor": latency_preproc, "features": feature_columns},
         args.output_dir / "latency_xgboost.joblib",
     )
-    print(f"Wrote {args.output_dir / 'model_predictions.csv'}")
-    print(f"Wrote {args.output_dir / 'feature_importance.csv'}")
-    print(f"Wrote {args.output_dir / 'model_metrics.json'}")
-    print("Test metrics:")
+
+    print(f"\nWrote artifacts to {args.output_dir}:")
+    print(f"  - model_predictions.csv")
+    print(f"  - feature_importance.csv")
+    print(f"  - model_metrics.json")
+    print(f"  - energy_xgboost.joblib, latency_xgboost.joblib" + (", accuracy_xgboost.joblib" if accuracy_metrics else ""))
+
+    print("\n--- Test Metrics Summary ---")
     for name, values in metrics.items():
-        print(f"  {name}: MAE={values['test']['mae']:.6g}, RMSE={values['test']['rmse']:.6g}, R²={values['test']['r2']:.4f}")
+        print(
+            f"  {name.upper()}: MAE={values['test']['mae']:.4f}, RMSE={values['test']['rmse']:.4f}, R²={values['test']['r2']:.4f}"
+        )
 
 
 if __name__ == "__main__":

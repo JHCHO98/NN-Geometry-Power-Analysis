@@ -1,4 +1,4 @@
-"""Convert cumulative energy analysis results into an XGBoost-ready model dataset."""
+"""Convert cumulative energy analysis results and accuracy measurements into an XGBoost-ready model dataset."""
 
 from __future__ import annotations
 
@@ -94,12 +94,34 @@ def engineering_features(
     return features
 
 
-def build_dataset(summary: pd.DataFrame, image_size: int, max_depth: int) -> pd.DataFrame:
+def build_dataset(
+    summary: pd.DataFrame,
+    accuracy_df: pd.DataFrame | None,
+    image_size: int,
+    max_depth: int,
+    compute_missing_proxies: bool = False,
+) -> pd.DataFrame:
     missing = REQUIRED_COLUMNS.difference(summary.columns)
     if missing:
         raise ValueError(f"Energy summary is missing required columns: {sorted(missing)}")
 
+    # Index accuracy results by model_id if available
+    accuracy_lookup: dict[str, dict[str, float]] = {}
+    if accuracy_df is not None and not accuracy_df.empty:
+        id_col = "id" if "id" in accuracy_df.columns else "model_id"
+        for _, acc_row in accuracy_df.iterrows():
+            m_id = str(acc_row[id_col]).zfill(4)
+            accuracy_lookup[m_id] = {
+                "synflow_score": float(acc_row.get("synflow_score", np.nan)),
+                "grad_norm_score": float(acc_row.get("grad_norm_score", np.nan)),
+                "jacob_cov_score": float(acc_row.get("jacob_cov_score", np.nan)),
+                "target_accuracy_percent": float(
+                    acc_row.get("best_accuracy", acc_row.get("final_accuracy", np.nan))
+                ),
+            }
+
     rows: list[dict[str, object]] = []
+
     for source_row in summary.to_dict(orient="records"):
         model_id = str(source_row["model_id"]).zfill(4)
         channels = parse_int_sequence(source_row["channels"])
@@ -125,6 +147,40 @@ def build_dataset(summary: pd.DataFrame, image_size: int, max_depth: int) -> pd.
             "feature_pattern": str(source_row["pattern"]),
             "feature_growth_pattern": str(source_row["growth_pattern"]),
         }
+
+        # Add zero-cost proxy features and target accuracy if available
+        acc_info = accuracy_lookup.get(model_id, {})
+        synflow = acc_info.get("synflow_score", np.nan)
+        grad_norm = acc_info.get("grad_norm_score", np.nan)
+        jacob_cov = acc_info.get("jacob_cov_score", np.nan)
+        target_acc = acc_info.get("target_accuracy_percent", np.nan)
+
+        if compute_missing_proxies and (np.isnan(synflow) or np.isnan(grad_norm) or np.isnan(jacob_cov)):
+            import torch
+            from FlexibleCNN import ModelConfig
+            from select_accuracy_sample import compute_zero_cost_proxies
+            config = ModelConfig(
+                depth=depth,
+                channels=channels,
+                pools=pools,
+                pattern=str(source_row["pattern"]),
+                growth_pattern=str(source_row["growth_pattern"]),
+                noise_ratio=float(source_row.get("noise_ratio", 0.0)),
+                min_channels=int(min(channels)),
+                max_channels=int(max(channels)),
+                seed=int(source_row.get("seed", 0)),
+                parameter_count=int(source_row["parameter_count"]),
+            )
+            proxies = compute_zero_cost_proxies(config, device="cpu")
+            synflow = proxies["synflow_score"]
+            grad_norm = proxies["grad_norm_score"]
+            jacob_cov = proxies["jacob_cov_score"]
+
+        row["feature_synflow_score"] = float(synflow)
+        row["feature_grad_norm_score"] = float(grad_norm)
+        row["feature_jacob_cov_score"] = float(jacob_cov)
+        row["target_accuracy_percent"] = target_acc
+
         row.update(engineering_features(channels, pools, image_size, max_depth))
         rows.append(row)
 
@@ -147,10 +203,17 @@ def parse_args() -> argparse.Namespace:
         help="Cumulative output from analyze_energy.py.",
     )
     parser.add_argument(
+        "--accuracy-results",
+        type=Path,
+        default=Path("measurements/ml/accuracy_50_results.csv"),
+        help="Accuracy training results from train_sampled_accuracy.py.",
+    )
+    parser.add_argument(
         "--output-csv", type=Path, default=Path("measurements/ml/model_dataset.csv")
     )
     parser.add_argument("--image-size", type=int, default=32)
     parser.add_argument("--max-depth", type=int, default=6)
+    parser.add_argument("--compute-missing-proxies", action="store_true")
     return parser.parse_args()
 
 
@@ -159,10 +222,22 @@ def main() -> None:
     if args.image_size <= 0 or args.max_depth <= 0:
         raise ValueError("--image-size and --max-depth must be positive.")
     summary = pd.read_csv(args.energy_summary, encoding="utf-8-sig")
-    dataset = build_dataset(summary, args.image_size, args.max_depth)
+
+    accuracy_df = None
+    if args.accuracy_results.exists():
+        accuracy_df = pd.read_csv(args.accuracy_results, encoding="utf-8-sig")
+        print(f"Loaded accuracy measurements from {args.accuracy_results} ({len(accuracy_df)} models).")
+    else:
+        print(f"Notice: {args.accuracy_results} not found. Accuracy target will be empty.")
+
+    dataset = build_dataset(
+        summary, accuracy_df, args.image_size, args.max_depth, args.compute_missing_proxies
+    )
     args.output_csv.parent.mkdir(parents=True, exist_ok=True)
     dataset.to_csv(args.output_csv, index=False, encoding="utf-8")
-    print(f"Wrote {args.output_csv} with {len(dataset)} models and {len(dataset.columns)} columns.")
+    
+    n_acc = dataset["target_accuracy_percent"].notna().sum()
+    print(f"Wrote {args.output_csv} with {len(dataset)} models ({n_acc} with accuracy targets) and {len(dataset.columns)} columns.")
 
 
 if __name__ == "__main__":

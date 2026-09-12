@@ -1,14 +1,18 @@
 {
   "candidate_count": 50000,
   "selected_count": 50,
-  "primary_pareto": "parameter_count (maximize) and energy_upper_j (minimize)",
-  "capacity_energy_pareto_count": 45,
-  "latency_energy_pareto_count": 1,
+  "pareto_basis": "mean_only",
+  "uncertainty_used": false,
+  "accuracy_mean_column": "ensemble_accuracy_mean_percent",
+  "energy_mean_column": "ensemble_energy_mean_j",
+  "latency_mean_column": "ensemble_latency_mean_ms",
+  "mean_acc_energy_pareto_count": 49,
+  "mean_accuracy_latency_pareto_count": 45,
+  "mean_capacity_energy_pareto_count": 42,
   "selection_reason_counts": {
-    "low_energy_ucb": 15,
-    "capacity_energy_pareto": 13,
-    "high_uncertainty": 10,
-    "structural_diversity": 10,
-    "balanced_fill": 2
+    "mean_acc_energy_pareto": 20,
+    "high_mean_accuracy": 10,
+    "low_mean_energy": 10,
+    "structural_diversity": 10
   }
 }
