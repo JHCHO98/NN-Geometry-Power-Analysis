@@ -1,0 +1,14 @@
+{
+  "candidate_count": 50000,
+  "selected_count": 50,
+  "primary_pareto": "parameter_count (maximize) and energy_upper_j (minimize)",
+  "capacity_energy_pareto_count": 45,
+  "latency_energy_pareto_count": 1,
+  "selection_reason_counts": {
+    "low_energy_ucb": 15,
+    "capacity_energy_pareto": 13,
+    "high_uncertainty": 10,
+    "structural_diversity": 10,
+    "balanced_fill": 2
+  }
+}

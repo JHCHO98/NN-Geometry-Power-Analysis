@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Capacity–Energy Pareto 구조 목록</title>
+  <style>
+    :root { color-scheme: light; font-family: "Segoe UI", "Noto Sans KR", sans-serif; color: #172033; background: #f5f7fb; }
+    body { margin: 0; padding: 32px 20px; }
+    main { max-width: 1120px; margin: auto; background: #fff; border: 1px solid #dce2ee; border-radius: 12px; box-shadow: 0 8px 24px #17203312; overflow: hidden; }
+    header { padding: 26px 28px 20px; background: linear-gradient(135deg, #0d356d, #176e92); color: #fff; }
+    h1 { margin: 0 0 8px; font-size: 24px; }
+    header p { margin: 0; color: #e1f4ff; line-height: 1.5; }
+    .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 18px 28px; border-bottom: 1px solid #e2e7f0; }
+    label { font-weight: 700; }
+    select { font: inherit; border: 1px solid #aebbd0; padding: 7px 10px; border-radius: 6px; background: #fff; }
+    #priority { color: #536076; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { background: #f0f4fa; color: #34445e; text-align: left; white-space: nowrap; }
+    th, td { padding: 11px 14px; border-bottom: 1px solid #e7ebf2; }
+    tbody tr:hover { background: #f6faff; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .pattern { font-weight: 600; color: #165e85; }
+    .mono { font-family: Consolas, monospace; font-size: 12px; color: #4a566a; }
+    .tag { display: inline-block; padding: 3px 7px; background: #e6f3e9; color: #286436; border-radius: 99px; font-size: 12px; font-weight: 700; }
+    footer { padding: 14px 28px; color: #5f6b7c; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Capacity–Energy Pareto 구조 목록</h1>
+      <p>다음 실제 측정 후보 중 Parameter Count ↑ · 보수적 Inference Energy ↓ Pareto 조건에 속하는 20개 구조입니다.</p>
+    </header>
+    <section class="controls" aria-label="정렬 설정">
+      <label for="primary-sort">1차 정렬 기준</label>
+      <select id="primary-sort">
+        <option value="depth">depth</option>
+        <option value="pool_count">pool_count</option>
+        <option value="pattern">pattern</option>
+        <option value="parameters">parameters</option>
+      </select>
+      <span id="priority"></span>
+    </section>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Model ID</th><th>Depth</th><th>Pool count</th><th>Pattern</th><th>Pools after layers</th><th>Channels</th><th class="num">Parameters</th><th class="num">Energy UCB (J)</th><th>선정 사유</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <footer id="count"></footer>
+  </main>
+  <script>
+    const structures = [
+      {id:"C029537",depth:5,pool_count:4,pattern:"increasing",pools:"1-2-3-4",channels:"11-20-46-89-149",parameters:168567,energy:0.0013233016349362,reason:"capacity_energy_pareto"},
+      {id:"C023242",depth:5,pool_count:4,pattern:"uniform",pools:"1-2-3-4",channels:"13-13-13-13-13",parameters:6640,energy:0.000879285243332,reason:"low_energy_ucb"},
+      {id:"C031583",depth:5,pool_count:5,pattern:"increasing",pools:"1-2-3-4-5",channels:"11-31-50-70-90",parameters:106678,energy:0.0012498589048445,reason:"capacity_energy_pareto"},
+      {id:"C036773",depth:5,pool_count:5,pattern:"increasing",pools:"1-2-3-4-5",channels:"8-15-28-33-44",parameters:27038,energy:0.0010784548427214,reason:"capacity_energy_pareto"},
+      {id:"C024467",depth:5,pool_count:5,pattern:"increasing",pools:"1-2-3-4-5",channels:"11-12-15-20-27",parameters:11030,energy:0.0009939069106409,reason:"capacity_energy_pareto"},
+      {id:"C007238",depth:5,pool_count:5,pattern:"inverse_hourglass",pools:"1-2-3-4-5",channels:"14-36-61-38-14",parameters:50641,energy:0.0011443258016349,reason:"capacity_energy_pareto"},
+      {id:"C004555",depth:5,pool_count:5,pattern:"uniform",pools:"1-2-3-4-5",channels:"12-12-12-12-12",parameters:5698,energy:0.0008715588622275,reason:"low_energy_ucb"},
+      {id:"C002328",depth:5,pool_count:5,pattern:"uniform",pools:"1-2-3-4-5",channels:"14-14-14-14-14",parameters:7654,energy:0.0008965402670747,reason:"low_energy_ucb"},
+      {id:"C024575",depth:6,pool_count:2,pattern:"inverse_hourglass",pools:"1-4",channels:"92-208-250-250-204-92",parameters:1835146,energy:0.0949202159087491,reason:"capacity_energy_pareto"},
+      {id:"C028658",depth:6,pool_count:4,pattern:"increasing",pools:"1-2-4-5",channels:"90-163-193-216-236-253",parameters:1792630,energy:0.0245784013146509,reason:"balanced_fill"},
+      {id:"C017250",depth:6,pool_count:5,pattern:"uniform",pools:"1-2-3-4-5",channels:"14-14-14-14-14-14",parameters:9432,energy:0.0009325172494806,reason:"low_energy_ucb"},
+      {id:"C028253",depth:6,pool_count:5,pattern:"increasing",pools:"1-2-3-4-6",channels:"93-168-194-213-229-242",parameters:1749677,energy:0.0213111534933527,reason:"capacity_energy_pareto"},
+      {id:"C038769",depth:6,pool_count:5,pattern:"increasing",pools:"1-2-3-5-6",channels:"68-148-182-207-229-248",parameters:1615229,energy:0.0165045628770347,reason:"capacity_energy_pareto"},
+      {id:"C021853",depth:6,pool_count:5,pattern:"increasing",pools:"1-2-3-4-5",channels:"30-122-149-169-212-229",parameters:1186576,energy:0.0075809612857289,reason:"capacity_energy_pareto"},
+      {id:"C038326",depth:6,pool_count:5,pattern:"increasing",pools:"1-2-3-5-6",channels:"10-58-106-155-203-251",parameters:953757,energy:0.0039178501494986,reason:"capacity_energy_pareto"},
+      {id:"C032483",depth:6,pool_count:5,pattern:"increasing",pools:"1-2-3-4-6",channels:"14-24-52-100-147-245",parameters:520911,energy:0.0022821044731505,reason:"capacity_energy_pareto"},
+      {id:"C042472",depth:6,pool_count:5,pattern:"increasing",pools:"1-2-3-4-5",channels:"8-15-35-68-114-174",parameters:277897,energy:0.0014016413006794,reason:"capacity_energy_pareto"},
+      {id:"C033729",depth:6,pool_count:5,pattern:"increasing",pools:"1-2-3-5-6",channels:"69-149-188-216-229-254",parameters:1684297,energy:0.0173954809131686,reason:"balanced_fill"},
+      {id:"C041071",depth:6,pool_count:5,pattern:"inverse_hourglass",pools:"1-2-3-4-6",channels:"13-32-57-57-30-13",parameters:68994,energy:0.0011673145239256,reason:"capacity_energy_pareto"},
+      {id:"C002241",depth:6,pool_count:5,pattern:"uniform",pools:"1-2-3-4-5",channels:"13-13-13-13-13-13",parameters:8174,energy:0.00092174017372,reason:"low_energy_ucb"}
+    ];
+    const labels = {depth:"depth", pool_count:"pool_count", pattern:"pattern", parameters:"parameters"};
+    const canonicalOrder = ["depth", "pool_count", "pattern", "parameters"];
+    const select = document.querySelector("#primary-sort");
+    const tbody = document.querySelector("#rows");
+    const compare = (a, b, key) => {
+      if (key === "parameters") return b.parameters - a.parameters;
+      return typeof a[key] === "number" ? a[key] - b[key] : String(a[key]).localeCompare(String(b[key]));
+    };
+    function render() {
+      const keys = [select.value, ...canonicalOrder.filter(key => key !== select.value)];
+      document.querySelector("#priority").textContent = `정렬 우선순위: 1. ${labels[keys[0]]} → 2. ${labels[keys[1]]} → 3. ${labels[keys[2]]} → 4. ${labels[keys[3]]}`;
+      const ordered = [...structures].sort((a, b) => keys.map(key => compare(a, b, key)).find(value => value !== 0) || a.id.localeCompare(b.id));
+      tbody.innerHTML = ordered.map(row => `<tr><td><strong>${row.id}</strong></td><td>${row.depth}</td><td>${row.pool_count}</td><td class="pattern">${row.pattern}</td><td class="mono">${row.pools}</td><td class="mono">${row.channels}</td><td class="num">${row.parameters.toLocaleString()}</td><td class="num">${row.energy.toExponential(3)}</td><td><span class="tag">${row.reason}</span></td></tr>`).join("");
+    }
+    select.addEventListener("change", render);
+    document.querySelector("#count").textContent = `표시 중: ${structures.length}개 Pareto 구조 · 데이터 원본: next_measurement_candidates.csv`;
+    render();
+  </script>
+</body>
+</html>
