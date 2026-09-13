@@ -6,9 +6,9 @@
   "accuracy_mean_column": "ensemble_accuracy_mean_percent",
   "energy_mean_column": "ensemble_energy_mean_j",
   "latency_mean_column": "ensemble_latency_mean_ms",
-  "mean_acc_energy_pareto_count": 49,
-  "mean_accuracy_latency_pareto_count": 45,
-  "mean_capacity_energy_pareto_count": 42,
+  "mean_acc_energy_pareto_count": 44,
+  "mean_accuracy_latency_pareto_count": 46,
+  "mean_capacity_energy_pareto_count": 40,
   "selection_reason_counts": {
     "mean_acc_energy_pareto": 20,
     "high_mean_accuracy": 10,

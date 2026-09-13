@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 
 import numpy as np
@@ -55,6 +56,62 @@ def regression_metrics(actual: np.ndarray, predicted: np.ndarray, ml: dict[str, 
         "rmse": float(ml["mean_squared_error"](actual, predicted) ** 0.5),
         "r2": float(ml["r2_score"](actual, predicted)),
     }
+
+
+def split_labeled_accuracy_indices(
+    indices: np.ndarray,
+    pattern_groups: pd.Series,
+    test_fraction: float,
+    validation_fraction: float,
+    random_state: int,
+    ml: dict[str, object],
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Create a three-way accuracy split, preserving every pattern when feasible."""
+    class_count = int(pattern_groups.nunique())
+    group_counts = pattern_groups.value_counts()
+    total = len(indices)
+    test_count = max(math.ceil(total * test_fraction), class_count)
+    # With the first stratified holdout removed, sklearn can omit a small class
+    # from a validation split sized exactly at the number of classes.  One extra
+    # validation row keeps every pattern represented for the current small set.
+    validation_count = max(math.ceil(total * validation_fraction), class_count + 1)
+    can_stratify = (
+        group_counts.min() >= 3
+        and total - test_count - validation_count >= class_count
+    )
+
+    if can_stratify:
+        train_val, test = ml["train_test_split"](
+            indices,
+            test_size=test_count,
+            random_state=random_state,
+            stratify=pattern_groups,
+        )
+        train, validation = ml["train_test_split"](
+            train_val,
+            test_size=validation_count,
+            random_state=random_state,
+            stratify=pattern_groups.iloc[train_val],
+        )
+        return train, validation, test
+
+    # Tiny or imbalanced labeled sets cannot place every pattern in all three splits.
+    # Keep the workflow runnable while explicitly reporting the weaker validation design.
+    test_count = max(1, math.ceil(total * test_fraction))
+    validation_count = max(1, math.ceil(total * validation_fraction))
+    if total - test_count - validation_count < 2:
+        raise ValueError("Not enough annotated models for an accuracy train/validation/test split.")
+    print(
+        "Warning: accuracy labels are too small or imbalanced for a three-way "
+        "pattern-stratified split; using a reproducible unstratified split."
+    )
+    train_val, test = ml["train_test_split"](
+        indices, test_size=test_count, random_state=random_state
+    )
+    train, validation = ml["train_test_split"](
+        train_val, test_size=validation_count, random_state=random_state
+    )
+    return train, validation, test
 
 
 def train_target(
@@ -237,15 +294,18 @@ def main() -> None:
             acc_stratify = acc_dataset["feature_pattern"].astype(str)
 
             acc_indices = np.arange(len(acc_dataset))
-            acc_train_val, acc_test = ml["train_test_split"](
-                acc_indices, test_size=args.test_size, random_state=args.random_state, stratify=acc_stratify
+            acc_train, acc_val, acc_test = split_labeled_accuracy_indices(
+                acc_indices,
+                acc_stratify,
+                args.test_size,
+                args.validation_size,
+                args.random_state,
+                ml,
             )
-            acc_val_share = args.validation_size / (1.0 - args.test_size)
-            acc_train, acc_val = ml["train_test_split"](
-                acc_train_val,
-                test_size=acc_val_share,
-                random_state=args.random_state,
-                stratify=acc_stratify.iloc[acc_train_val],
+            print(
+                "Accuracy split: "
+                f"train={len(acc_train)}, validation={len(acc_val)}, test={len(acc_test)} "
+                "(pattern-stratified when feasible)."
             )
 
             acc_split = pd.Series("test", index=acc_dataset.index, name="split")

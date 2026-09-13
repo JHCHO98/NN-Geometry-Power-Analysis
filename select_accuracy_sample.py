@@ -9,76 +9,11 @@ import random
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
-from FlexibleCNN import FlexibleCNN, ModelConfig
-
-
-def compute_zero_cost_proxies(config: ModelConfig, device: str = "cpu") -> dict[str, float]:
-    """Compute Zero-Cost Proxies (SynFlow, JacobCov, GradNorm) for a random model init."""
-    model = FlexibleCNN(config).to(device)
-    model.eval()
-
-    # 1. SynFlow Metric (Gradient flow conservation without data dependency)
-    # Conservation: Product of parameter values and their gradients for all-ones input
-    @torch.no_grad()
-    def prepare_synflow(m: nn.Module):
-        for p in m.parameters():
-            if p.requires_grad:
-                p.grad = None
-
-    prepare_synflow(model)
-    # Convert parameters to absolute value copies
-    for p in model.parameters():
-        if p.requires_grad:
-            p.data = p.data.abs()
-
-    inputs = torch.ones(1, 3, 32, 32, device=device)
-    output = model(inputs)
-    torch.sum(output).backward()
-
-    synflow_score = 0.0
-    for p in model.parameters():
-        if p.requires_grad and p.grad is not None:
-            synflow_score += (p.data * p.grad).sum().item()
-
-    # Re-instantiate model to restore original random initialization
-    model = FlexibleCNN(config).to(device)
-
-    # 2. GradNorm Metric (Gradient magnitude for dummy batch)
-    model.zero_grad()
-    dummy_input = torch.randn(16, 3, 32, 32, device=device)
-    dummy_target = torch.randint(0, 10, (16,), device=device)
-    criterion = nn.CrossEntropyLoss()
-    loss = criterion(model(dummy_input), dummy_target)
-    loss.backward()
-
-    grad_norm = 0.0
-    for p in model.parameters():
-        if p.requires_grad and p.grad is not None:
-            grad_norm += p.grad.data.norm(2).item() ** 2
-    grad_norm = grad_norm**0.5
-
-    # 3. Jacobian Covariance (Representation Class Expressivity)
-    model.zero_grad()
-    batch_size = 16
-    x = torch.randn(batch_size, 3, 32, 32, device=device)
-    outputs = model(x)
-    # Compute correlation matrix of output predictions
-    corr = torch.corrcoef(outputs)
-    if torch.isnan(corr).any():
-        jacob_cov = 0.0
-    else:
-        # Lower correlation across samples = higher representation diversity
-        jacob_cov = -torch.log(torch.abs(torch.det(corr + 1e-4 * torch.eye(batch_size, device=device))) + 1e-8).item()
-
-    return {
-        "synflow_score": float(synflow_score),
-        "grad_norm_score": float(grad_norm),
-        "jacob_cov_score": float(jacob_cov),
-    }
+from FlexibleCNN import ModelConfig
+from zero_cost_proxies import compute_zero_cost_proxies
 
 
 def parse_int_sequence(value: object) -> list[int]:

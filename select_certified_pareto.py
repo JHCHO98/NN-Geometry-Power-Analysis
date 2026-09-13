@@ -401,6 +401,109 @@ def generate_pareto_html(full_frame: pd.DataFrame, selected_indices: list[int], 
     print(f"Generated Mean Pareto viewer: {output_html}")
 
 
+def generate_interactive_explorer(_: pd.DataFrame, output_html: Path) -> None:
+    """Create the lightweight explorer shell; its data is served at runtime."""
+    template = r'''<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CNN Accuracy–Energy Explorer</title>
+  <style>
+    :root { font-family: "Segoe UI", "Noto Sans KR", sans-serif; color:#182235; background:#f4f7fb; }
+    * { box-sizing:border-box; }
+    body { margin:0; padding:24px; }
+    main { max-width:1280px; margin:auto; background:#fff; border:1px solid #d8e0eb; border-radius:14px; overflow:hidden; box-shadow:0 10px 28px #17203312; }
+    header { padding:24px 28px; background:linear-gradient(120deg,#123b67,#0d7888); color:#fff; }
+    h1 { margin:0 0 6px; font-size:24px; } header p { margin:0; color:#e7f7fa; font-size:14px; }
+    nav { display:flex; gap:6px; padding:10px 18px 0; border-bottom:1px solid #dfe6f0; background:#f8fafc; }
+    button { font:inherit; cursor:pointer; } .tab { border:0; background:transparent; padding:11px 16px; color:#516076; font-weight:650; border-bottom:3px solid transparent; }
+    .tab.active { color:#0c5f77; border-bottom-color:#0c7f91; }
+    .panel { display:none; padding:22px 26px 26px; } .panel.active { display:block; }
+    .note { margin:0 0 14px; color:#526176; font-size:13px; }
+    .legend { display:flex; flex-wrap:wrap; gap:10px 16px; margin:0 0 12px; font-size:13px; }
+    .legend span::before { content:""; display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:5px; vertical-align:-1px; background:var(--c); }
+    .chart-actions { display:flex; justify-content:flex-end; margin:0 0 7px; }
+    .chart-actions button { border:1px solid #9cb0c9; border-radius:6px; color:#164c6b; background:#fff; padding:5px 9px; font-size:13px; }
+    .chart-wrap { position:relative; border:1px solid #d9e1ed; border-radius:8px; background:#fff; min-height:530px; }
+    canvas { width:100%; height:530px; display:block; touch-action:none; }
+    .tooltip { display:none; position:absolute; z-index:2; pointer-events:none; max-width:285px; padding:10px 12px; color:#f8fbff; background:#172235ed; border-radius:7px; font-size:12px; line-height:1.55; box-shadow:0 3px 12px #0004; }
+    .toolbar { display:flex; flex-wrap:wrap; gap:12px 16px; align-items:end; margin-bottom:14px; }
+    .control { display:grid; gap:5px; font-size:13px; font-weight:600; color:#45546a; }
+    select, input { font:inherit; font-size:14px; min-height:34px; border:1px solid #bdc9da; border-radius:6px; padding:5px 8px; background:#fff; color:#182235; }
+    .filters { border-top:1px solid #e3e9f2; padding-top:14px; margin:4px 0 14px; }
+    .filters-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-weight:650; }
+    .filter-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:7px 0; }
+    .filter-row select, .filter-row input { min-width:130px; }
+    .add, .remove { border:1px solid #9cb0c9; border-radius:6px; color:#164c6b; background:#fff; padding:6px 10px; }
+    .remove { color:#9a2d2d; border-color:#d6a7a7; } .status { color:#526176; font-size:13px; margin:10px 0 0; }
+    @media (max-width:620px) { body{padding:10px;} .panel{padding:16px 12px;} header{padding:18px;} canvas{height:440px;} .chart-wrap{min-height:440px;} }
+  </style>
+</head>
+<body>
+<main>
+  <header><h1>Accuracy–Energy Pareto Explorer</h1><p>평균 예측값 기준. Energy는 낮을수록, Accuracy는 높을수록 좋음.</p></header>
+  <nav><button class="tab active" data-tab="pareto">Energy–Accuracy Pareto</button><button class="tab" data-tab="scatter">Custom scatter</button></nav>
+  <section id="pareto" class="panel active">
+    <p class="note">연한 점은 전체 50,000개 후보다. 색 점은 각 pattern 내부 Pareto, 검은 테두리는 전체 Accuracy–Energy Pareto다.</p>
+    <div class="legend"><span style="--c:#8e99a9">All candidates</span><span style="--c:#222">Overall Pareto</span><span style="--c:#1f77b4">increasing</span><span style="--c:#e45756">decreasing</span><span style="--c:#54a24b">uniform</span><span style="--c:#b279a2">hourglass</span><span style="--c:#f2a541">inverse_hourglass</span></div>
+    <div class="chart-actions"><button type="button" data-reset="pareto-canvas">Reset view</button></div><p class="note">Wheel: both axes · Shift + wheel: X axis only · Alt + wheel: Y axis only</p>
+    <div class="chart-wrap"><canvas id="pareto-canvas" aria-label="전체 및 pattern별 Accuracy-Energy Pareto 산점도"></canvas><div class="tooltip"></div></div>
+  </section>
+  <section id="scatter" class="panel">
+    <div class="toolbar">
+      <label class="control">X axis<select id="x-axis"></select></label>
+      <label class="control">Y axis<select id="y-axis"></select></label>
+    </div>
+    <div class="filters"><div class="filters-head"><span>Constraints (AND)</span><button class="add" id="add-filter" type="button">+ Add constraint</button></div><div id="filter-list"></div></div>
+    <div class="chart-wrap"><canvas id="custom-canvas" aria-label="조건 기반 사용자 산점도"></canvas><div class="tooltip"></div></div>
+    <div class="chart-actions"><button type="button" data-reset="custom-canvas">Reset view</button></div><p class="note">Wheel: both axes · Shift + wheel: X axis only · Alt + wheel: Y axis only</p><p class="status" id="custom-status" aria-live="polite"></p>
+  </section>
+</main>
+<script>
+let DATA = [];
+const PATTERN_COLORS = {increasing:'#1f77b4', decreasing:'#e45756', uniform:'#54a24b', hourglass:'#b279a2', inverse_hourglass:'#f2a541'};
+const FIELDS = {
+  accuracy:{label:'Predicted accuracy (%)', value:d=>d.accuracy}, energy:{label:'Predicted energy (mJ)', value:d=>d.energy}, latency:{label:'Predicted latency (ms)', value:d=>d.latency},
+  parameters:{label:'Parameter count', value:d=>d.parameters}, depth:{label:'Depth', value:d=>d.depth}, poolCount:{label:'Pool count', value:d=>d.poolCount}, poolRatio:{label:'Pool ratio (pool_count / depth)', value:d=>d.poolRatio}
+};
+const FILTERS = {pattern:{label:'Pattern', type:'category', values:['increasing','decreasing','uniform','hourglass','inverse_hourglass']}, depth:{label:'Depth',type:'number'}, poolCount:{label:'Pool count',type:'number'}, poolRatio:{label:'Pool ratio',type:'number'}};
+const CHART_VIEWS = new WeakMap();
+function extent(values) { let lo=Math.min(...values), hi=Math.max(...values); const pad=(hi-lo||1)*0.06; return [lo-pad,hi+pad]; }
+function fmt(key,v) { if(key==='parameters') return Math.round(v).toLocaleString(); if(key==='poolRatio') return v.toFixed(3); return Number(v).toFixed(key==='accuracy'||key==='energy'||key==='latency'?3:0); }
+function tooltipText(d) { return `<b>${d.id}</b><br>pattern: ${d.pattern}<br>depth: ${d.depth} · pool count: ${d.poolCount} · ratio: ${d.poolRatio.toFixed(3)}<br>channels: ${d.channels}<br>parameters: ${d.parameters.toLocaleString()}<br>accuracy: ${d.accuracy.toFixed(3)}%<br>energy: ${d.energy.toFixed(4)} mJ<br>latency: ${d.latency.toFixed(4)} ms`; }
+function drawAxes(ctx,w,h,box,xDomain,yDomain,xLabel,yLabel) {
+  ctx.strokeStyle='#aab7c8'; ctx.fillStyle='#435269'; ctx.lineWidth=1; ctx.font='12px Segoe UI';
+  ctx.strokeRect(box.l,box.t,box.w,box.h); ctx.textAlign='center'; ctx.fillText(xLabel,box.l+box.w/2,h-12); ctx.save(); ctx.translate(15,box.t+box.h/2); ctx.rotate(-Math.PI/2); ctx.fillText(yLabel,0,0); ctx.restore();
+  for(let i=0;i<=5;i++){ const x=box.l+box.w*i/5, y=box.t+box.h*i/5; ctx.strokeStyle='#e6ebf2'; ctx.beginPath();ctx.moveTo(x,box.t);ctx.lineTo(x,box.t+box.h);ctx.stroke();ctx.beginPath();ctx.moveTo(box.l,y);ctx.lineTo(box.l+box.w,y);ctx.stroke(); ctx.fillStyle='#435269';ctx.textAlign='center';ctx.fillText(fmt('',xDomain[0]+(xDomain[1]-xDomain[0])*i/5),x,box.t+box.h+17);ctx.textAlign='right';ctx.fillText(fmt('',yDomain[1]-(yDomain[1]-yDomain[0])*i/5),box.l-7,y+4); }
+}
+function redrawSoon(canvas) { const state=CHART_VIEWS.get(canvas); if(state.frame)return; state.frame=requestAnimationFrame(()=>{state.frame=0;const r=state.render;setupChart(canvas,...r);}); }
+function setupChart(canvas, rows, xKey, yKey, styleFn, statusId, statusText, overlayFn) {
+  const wrap=canvas.parentElement, tip=wrap.querySelector('.tooltip'); const xs=rows.map(d=>FIELDS[xKey].value(d)),ys=rows.map(d=>FIELDS[yKey].value(d)); const defaultXd=extent(xs),defaultYd=extent(ys); let state=CHART_VIEWS.get(canvas); if(!state||state.xKey!==xKey||state.yKey!==yKey){state={xKey,yKey,xDomain:defaultXd,yDomain:defaultYd};CHART_VIEWS.set(canvas,state);} state.render=[rows,xKey,yKey,styleFn,statusId,statusText,overlayFn];
+  const rect=canvas.getBoundingClientRect(),dpr=devicePixelRatio||1,w=Math.max(360,rect.width),h=Math.max(360,rect.height);canvas.width=w*dpr;canvas.height=h*dpr;const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);const box={l:70,t:20,w:w-95,h:h-72},xd=state.xDomain,yd=state.yDomain,sx=x=>box.l+(x-xd[0])/(xd[1]-xd[0])*box.w,sy=y=>box.t+box.h-(y-yd[0])/(yd[1]-yd[0])*box.h;state.box=box;
+  drawAxes(ctx,w,h,box,xd,yd,FIELDS[xKey].label,FIELDS[yKey].label);ctx.save();ctx.beginPath();ctx.rect(box.l,box.t,box.w,box.h);ctx.clip();if(overlayFn)overlayFn(ctx,sx,sy);const grid=new Map(),cell=32; rows.forEach(d=>{const x=sx(FIELDS[xKey].value(d)),y=sy(FIELDS[yKey].value(d)),style=styleFn(d);if(!style)return;ctx.globalAlpha=style.alpha;ctx.fillStyle=style.fill;ctx.beginPath();ctx.arc(x,y,style.radius,0,Math.PI*2);ctx.fill();if(style.stroke){ctx.globalAlpha=1;ctx.strokeStyle=style.stroke;ctx.lineWidth=style.width||1.2;ctx.stroke();}if(style.hoverable!==false&&x>=box.l-12&&x<=box.l+box.w+12&&y>=box.t-12&&y<=box.t+box.h+12){const key=`${Math.floor(x/cell)}:${Math.floor(y/cell)}`;const bucket=grid.get(key)||[];bucket.push({d,x,y});grid.set(key,bucket);}});ctx.globalAlpha=1;ctx.restore();state.grid=grid;
+  if(statusId)document.getElementById(statusId).textContent=statusText||`${rows.length.toLocaleString()} candidates shown`;
+  const showTooltip=e=>{const r=canvas.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top,cx=Math.floor(mx/cell),cy=Math.floor(my/cell);let best=null,bestDist=144;for(let gx=cx-1;gx<=cx+1;gx++)for(let gy=cy-1;gy<=cy+1;gy++)for(const p of state.grid.get(`${gx}:${gy}`)||[]){const dist=(p.x-mx)**2+(p.y-my)**2;if(dist<bestDist){best=p;bestDist=dist;}}if(!best){tip.style.display='none';return;}tip.innerHTML=tooltipText(best.d);tip.style.display='block';tip.style.left=Math.min(mx+14,wrap.clientWidth-295)+'px';tip.style.top=Math.max(5,my-12)+'px';};
+  canvas.onmousemove=e=>{if(state.drag)return;state.hoverEvent=e;if(state.hoverFrame)return;state.hoverFrame=requestAnimationFrame(()=>{state.hoverFrame=0;showTooltip(state.hoverEvent);});};canvas.onmouseleave=()=>tip.style.display='none';canvas.onwheel=e=>{e.preventDefault();const r=canvas.getBoundingClientRect(),fx=(e.clientX-r.left-box.l)/box.w,fy=(e.clientY-r.top-box.t)/box.h,scale=e.deltaY<0?.82:1.22,xCenter=xd[0]+(xd[1]-xd[0])*fx,yCenter=yd[1]-(yd[1]-yd[0])*fy,xSpan=(xd[1]-xd[0])*scale,ySpan=(yd[1]-yd[0])*scale,zoomX=!e.altKey,zoomY=!e.shiftKey;if(zoomX)state.xDomain=[xCenter-xSpan*fx,xCenter+xSpan*(1-fx)];if(zoomY)state.yDomain=[yCenter-ySpan*(1-fy),yCenter+ySpan*fy];redrawSoon(canvas);};canvas.onpointerdown=e=>{state.drag={x:e.clientX,y:e.clientY,xd:[...xd],yd:[...yd]};canvas.setPointerCapture(e.pointerId);tip.style.display='none';};canvas.onpointermove=e=>{const drag=state.drag;if(!drag)return;const dx=(e.clientX-drag.x)/box.w*(drag.xd[1]-drag.xd[0]),dy=(e.clientY-drag.y)/box.h*(drag.yd[1]-drag.yd[0]);state.xDomain=[drag.xd[0]-dx,drag.xd[1]-dx];state.yDomain=[drag.yd[0]+dy,drag.yd[1]+dy];redrawSoon(canvas);};canvas.onpointerup=canvas.onpointercancel=()=>{state.drag=null;};
+}
+function drawParetoLines(ctx,sx,sy){const series=[{color:'#202735',width:2.8,dash:[7,4],rows:DATA.filter(d=>d.globalPareto)},...Object.keys(PATTERN_COLORS).map(pattern=>({color:PATTERN_COLORS[pattern],width:1.8,dash:[],rows:DATA.filter(d=>d.pattern===pattern&&d.patternPareto)}))];for(const line of series){if(line.rows.length<2)continue;const frontier=[...line.rows].sort((a,b)=>a.energy-b.energy);ctx.save();ctx.strokeStyle=line.color;ctx.lineWidth=line.width;ctx.globalAlpha=.88;ctx.setLineDash(line.dash);ctx.beginPath();frontier.forEach((d,index)=>{const x=sx(d.energy),y=sy(d.accuracy);index?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();ctx.restore();}}
+function drawPareto(){ setupChart(document.getElementById('pareto-canvas'),DATA,'energy','accuracy',d=>{ if(d.globalPareto)return {fill:'#ffffff',stroke:'#222',radius:4.3,width:2,alpha:1}; if(d.patternPareto)return {fill:PATTERN_COLORS[d.pattern],radius:3.4,alpha:.95}; return {fill:'#8e99a9',radius:1.25,alpha:.18}; },undefined,undefined,drawParetoLines); }
+function options(){ return ['accuracy','energy','latency'].map(key=>`<option value="${key}">${FIELDS[key].label}</option>`).join(''); }
+function makeFilter(){ const row=document.createElement('div');row.className='filter-row';row.innerHTML=`<select class="filter-field">${Object.entries(FILTERS).map(([k,f])=>`<option value="${k}">${f.label}</option>`).join('')}</select><select class="filter-op"></select><span class="filter-value"></span><button class="remove" type="button">Remove</button>`; row.querySelector('.filter-field').onchange=()=>refreshFilter(row);row.querySelector('.filter-op').onchange=drawCustom;row.querySelector('.remove').onclick=()=>{row.remove();drawCustom();};document.getElementById('filter-list').append(row);refreshFilter(row); }
+function refreshFilter(row){const spec=FILTERS[row.querySelector('.filter-field').value],op=row.querySelector('.filter-op'),value=row.querySelector('.filter-value');op.innerHTML=spec.type==='category'?'<option value="eq">=</option>':'<option value="eq">=</option><option value="gte">≥</option><option value="lte">≤</option>'; value.innerHTML=spec.type==='category'?`<select>${spec.values.map(v=>`<option value="${v}">${v}</option>`).join('')}</select>`:'<input type="number" step="any" placeholder="value">';value.querySelector('select,input').oninput=drawCustom;drawCustom();}
+function paretoFrontier(rows,xKey,yKey){const xMax=xKey==='accuracy',yMax=yKey==='accuracy',xValue=d=>FIELDS[xKey].value(d),yValue=d=>FIELDS[yKey].value(d),ordered=[...rows].sort((a,b)=>(xMax?-1:1)*(xValue(a)-xValue(b)));const frontier=[];let bestY=yMax?-Infinity:Infinity;for(let i=0;i<ordered.length;){let j=i,best=ordered[i];while(j<ordered.length&&xValue(ordered[j])===xValue(ordered[i])){if((yMax&&yValue(ordered[j])>yValue(best))||(!yMax&&yValue(ordered[j])<yValue(best)))best=ordered[j];j++;}const candidateY=yValue(best),improves=yMax?candidateY>bestY:candidateY<bestY;if(improves){frontier.push(best);bestY=candidateY;}i=j;}return frontier.sort((a,b)=>xValue(a)-xValue(b));}
+function drawCustom(){const clauses=[...document.querySelectorAll('.filter-row')].map(row=>({key:row.querySelector('.filter-field').value,op:row.querySelector('.filter-op').value,value:row.querySelector('.filter-value select,.filter-value input').value}));const selected=DATA.filter(d=>clauses.every(c=>{const v=d[c.key],target=FILTERS[c.key].type==='number'?Number(c.value):c.value;if(c.value==='')return true;return c.op==='eq'?v===target:c.op==='gte'?v>=target:v<=target;}));const selectedIds=new Set(selected.map(d=>d.id)),hasConstraints=clauses.length>0,x=document.getElementById('x-axis').value,y=document.getElementById('y-axis').value,frontier=paretoFrontier(selected,x,y),frontierIds=new Set(frontier.map(d=>d.id)),meanX=selected.length?selected.reduce((sum,d)=>sum+FIELDS[x].value(d),0)/selected.length:NaN,meanY=selected.length?selected.reduce((sum,d)=>sum+FIELDS[y].value(d),0)/selected.length:NaN,status=selected.length?`${selected.length.toLocaleString()} selected / ${DATA.length.toLocaleString()} total · Mean X: ${fmt(x,meanX)} · Mean Y: ${fmt(y,meanY)} · Pareto: ${frontier.length}`:`0 selected / ${DATA.length.toLocaleString()} total`;
+  setupChart(document.getElementById('custom-canvas'),DATA,x,y,d=>hasConstraints&&!selectedIds.has(d.id)?({fill:'#8e99a9',radius:1.2,alpha:.16,hoverable:false}):frontierIds.has(d.id)?({fill:'#ffffff',stroke:'#202735',radius:4.1,width:1.8,alpha:1}):({fill:PATTERN_COLORS[d.pattern],radius:2.2,alpha:.62}),'custom-status',status,(ctx,sx,sy)=>{if(frontier.length<2)return;ctx.save();ctx.strokeStyle='#202735';ctx.lineWidth=2.4;ctx.globalAlpha=.9;ctx.setLineDash([5,3]);ctx.beginPath();frontier.forEach((d,index)=>{const px=sx(FIELDS[x].value(d)),py=sy(FIELDS[y].value(d));index?ctx.lineTo(px,py):ctx.moveTo(px,py);});ctx.stroke();ctx.restore();});}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab,.panel').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(b.dataset.tab).classList.add('active');if(b.dataset.tab==='pareto')setTimeout(drawPareto,0);else setTimeout(drawCustom,0);});
+for(const id of ['x-axis','y-axis']){document.getElementById(id).innerHTML=options();document.getElementById(id).onchange=drawCustom;}document.getElementById('x-axis').value='energy';document.getElementById('y-axis').value='accuracy';document.getElementById('add-filter').onclick=makeFilter;document.querySelectorAll('[data-reset]').forEach(button=>button.onclick=()=>{CHART_VIEWS.delete(document.getElementById(button.dataset.reset));button.dataset.reset==='pareto-canvas'?drawPareto():drawCustom();});new ResizeObserver(()=>{if(!DATA.length)return;if(document.getElementById('pareto').classList.contains('active'))drawPareto();else drawCustom();}).observe(document.querySelector('main'));
+async function loadData(){try{const response=await fetch('/api/data');if(!response.ok)throw new Error(`HTTP ${response.status}`);DATA=await response.json();drawPareto();}catch(error){document.querySelector('#pareto .note').textContent='Run serve_pareto_explorer.py, then open http://127.0.0.1:8000/';console.error(error);}}loadData();
+</script>
+</body></html>'''
+    output_html.parent.mkdir(parents=True, exist_ok=True)
+    output_html.write_text(template, encoding="utf-8")
+    print(f"Generated Accuracy-Energy explorer: {output_html}")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--predictions", type=Path, default=Path("measurements/search/candidate_predictions.csv"))
@@ -562,7 +665,7 @@ def main() -> None:
     }
     args.summary_json.write_text(json.dumps(summary, indent=2), encoding="utf-8")
 
-    generate_pareto_html(frame, selected, reasons, args.output_html)
+    generate_interactive_explorer(frame, args.output_html)
 
     print(f"Using mean columns: accuracy={acc_col}, energy={energy_col}, latency={latency_col}")
     print("Uncertainty: NOT USED")
