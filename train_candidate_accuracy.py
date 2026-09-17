@@ -11,10 +11,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.cuda.amp import GradScaler, autocast
-import torchvision
-import torchvision.transforms as transforms
 
 from FlexibleCNN import FlexibleCNN, ModelConfig
+from load_data import get_dataloaders
+
+
+# Enable CuDNN benchmark for maximum convolution speed on RTX 4090
+torch.backends.cudnn.benchmark = True
 
 
 def parse_int_sequence(value: object) -> list[int]:
@@ -22,31 +25,6 @@ def parse_int_sequence(value: object) -> list[int]:
     if not text or text.lower() == "nan":
         return []
     return [int(part) for part in text.split("-")]
-
-
-def get_cifar10_loaders(data_dir: Path, batch_size: int = 128, num_workers: int = 4):
-    transform_train = transforms.Compose([
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-    ])
-
-    transform_test = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-    ])
-
-    train_set = torchvision.datasets.CIFAR10(root=str(data_dir), train=True, download=True, transform=transform_train)
-    test_set = torchvision.datasets.CIFAR10(root=str(data_dir), train=False, download=True, transform=transform_test)
-
-    train_loader = torch.utils.data.DataLoader(
-        train_set, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True
-    )
-    test_loader = torch.utils.data.DataLoader(
-        test_set, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True
-    )
-    return train_loader, test_loader
 
 
 def train_single_model(
@@ -72,7 +50,7 @@ def train_single_model(
         for images, labels in train_loader:
             images = images.to(device, non_blocking=True)
             labels = labels.to(device, non_blocking=True)
-            optimizer.zero_grad()
+            optimizer.zero_grad(set_to_none=True)
 
             with autocast(enabled=(device == "cuda")):
                 outputs = model(images)
@@ -123,11 +101,9 @@ def main() -> None:
         type=Path,
         default=Path("measurements/ml/candidate_accuracy_50_results.csv"),
     )
-    parser.add_argument("--data-dir", type=Path, default=Path("data_cifar10"))
     parser.add_argument("--epochs", type=int, default=30)
-    parser.add_argument("--batch-size", type=int, default=128)
+    parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--lr", type=float, default=0.001)
-    parser.add_argument("--num-workers", type=int, default=4)
     args = parser.parse_args()
 
     if not args.candidates_csv.exists():
@@ -141,12 +117,11 @@ def main() -> None:
     print(f"==================================================")
 
     df = pd.read_csv(args.candidates_csv, encoding="utf-8-sig")
-    print(f"Loaded {len(df)} candidate models ({args.epochs} epochs each).")
+    print(f"Loaded {len(df)} candidate models ({args.epochs} epochs each, batch size {args.batch_size}).")
 
-    args.data_dir.mkdir(parents=True, exist_ok=True)
-    train_loader, test_loader = get_cifar10_loaders(
-        args.data_dir, batch_size=args.batch_size, num_workers=args.num_workers
-    )
+    print("Preparing high-speed in-memory CIFAR-10 data loaders...")
+    train_loader, test_loader = get_dataloaders(batch_size=args.batch_size)
+    print("Data loaders ready!")
 
     results = []
     total_start = time.time()
