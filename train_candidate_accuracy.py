@@ -1,4 +1,4 @@
-"""Train selected candidate CNNs on CIFAR-10 using local GPU (e.g. RTX 4090)."""
+"""Train selected candidate CNNs on CIFAR-10 using 100% GPU in-memory acceleration (RTX 4090)."""
 
 from __future__ import annotations
 
@@ -13,10 +13,9 @@ import torch.optim as optim
 from torch.cuda.amp import GradScaler, autocast
 
 from FlexibleCNN import FlexibleCNN, ModelConfig
-from load_data import get_dataloaders
+from load_data import load_data
 
 
-# Enable CuDNN benchmark for maximum convolution speed on RTX 4090
 torch.backends.cudnn.benchmark = True
 
 
@@ -27,11 +26,48 @@ def parse_int_sequence(value: object) -> list[int]:
     return [int(part) for part in text.split("-")]
 
 
+class PureGpuCIFAR10:
+    """Zero-CPU-bottleneck CIFAR-10 dataset residing completely in GPU VRAM."""
+
+    def __init__(self, data_dict: dict, device: str = "cuda", is_train: bool = True):
+        self.device = device
+        self.is_train = is_train
+
+        # Shape: (N, 3, 32, 32), uint8 -> float32 on GPU normalized to [0, 1]
+        raw_data = torch.from_numpy(data_dict["data"]).float().to(device) / 255.0
+
+        # Pre-normalize on GPU (Mean: 0.4914, 0.4822, 0.4465 / Std: 0.2023, 0.1994, 0.2010)
+        mean = torch.tensor([0.4914, 0.4822, 0.4465], device=device).view(1, 3, 1, 1)
+        std = torch.tensor([0.2023, 0.1994, 0.2010], device=device).view(1, 3, 1, 1)
+        self.data = (raw_data - mean) / std
+
+        self.labels = torch.tensor(data_dict["labels"], dtype=torch.long, device=device)
+        self.num_samples = len(self.labels)
+
+    def get_batches(self, batch_size: int, shuffle: bool = True):
+        if shuffle:
+            indices = torch.randperm(self.num_samples, device=self.device)
+        else:
+            indices = torch.arange(self.num_samples, device=self.device)
+
+        for start_idx in range(0, self.num_samples, batch_size):
+            batch_indices = indices[start_idx : start_idx + batch_size]
+            batch_x = self.data[batch_indices]
+            batch_y = self.labels[batch_indices]
+
+            # GPU-native random horizontal flip for training
+            if self.is_train and torch.rand(1, device=self.device).item() > 0.5:
+                batch_x = torch.flip(batch_x, dims=[3])
+
+            yield batch_x, batch_y
+
+
 def train_single_model(
     config: ModelConfig,
-    train_loader: torch.utils.data.DataLoader,
-    test_loader: torch.utils.data.DataLoader,
+    train_gpu_data: PureGpuCIFAR10,
+    test_gpu_data: PureGpuCIFAR10,
     epochs: int = 30,
+    batch_size: int = 256,
     lr: float = 0.001,
     device: str = "cuda",
 ) -> dict[str, float]:
@@ -47,9 +83,7 @@ def train_single_model(
 
     for epoch in range(1, epochs + 1):
         model.train()
-        for images, labels in train_loader:
-            images = images.to(device, non_blocking=True)
-            labels = labels.to(device, non_blocking=True)
+        for images, labels in train_gpu_data.get_batches(batch_size=batch_size, shuffle=True):
             optimizer.zero_grad(set_to_none=True)
 
             with autocast(enabled=(device == "cuda")):
@@ -62,13 +96,11 @@ def train_single_model(
 
         scheduler.step()
 
-        # Validation
+        # Evaluation
         model.eval()
         correct, total, val_loss = 0, 0, 0.0
         with torch.no_grad():
-            for images, labels in test_loader:
-                images = images.to(device, non_blocking=True)
-                labels = labels.to(device, non_blocking=True)
+            for images, labels in test_gpu_data.get_batches(batch_size=batch_size, shuffle=False):
                 outputs = model(images)
                 loss = criterion(outputs, labels)
                 val_loss += loss.item() * labels.size(0)
@@ -119,9 +151,11 @@ def main() -> None:
     df = pd.read_csv(args.candidates_csv, encoding="utf-8-sig")
     print(f"Loaded {len(df)} candidate models ({args.epochs} epochs each, batch size {args.batch_size}).")
 
-    print("Preparing high-speed in-memory CIFAR-10 data loaders...")
-    train_loader, test_loader = get_dataloaders(batch_size=args.batch_size)
-    print("Data loaders ready!")
+    print("Loading CIFAR-10 entirely into 24GB GPU VRAM (Zero CPU Bottleneck)...")
+    train_raw, test_raw = load_data()
+    train_gpu_data = PureGpuCIFAR10(train_raw, device=device, is_train=True)
+    test_gpu_data = PureGpuCIFAR10(test_raw, device=device, is_train=False)
+    print("VRAM Data transfer completed! GPU is ready at 100% throughput.")
 
     results = []
     total_start = time.time()
@@ -145,7 +179,13 @@ def main() -> None:
 
         print(f"[{idx+1:02d}/{len(df)}] Model {id_str} ({cand_id}, {reason}, Params: {cfg.parameter_count:,})...", end=" ", flush=True)
         metrics = train_single_model(
-            cfg, train_loader, test_loader, epochs=args.epochs, lr=args.lr, device=device
+            cfg,
+            train_gpu_data,
+            test_gpu_data,
+            epochs=args.epochs,
+            batch_size=args.batch_size,
+            lr=args.lr,
+            device=device,
         )
         print(f"Acc: {metrics['best_accuracy']:.2f}% ({metrics['train_time_sec']:.1f}s)")
 
@@ -159,7 +199,7 @@ def main() -> None:
     res_df.to_csv(args.output_csv, index=False, encoding="utf-8-sig")
 
     print(f"\n==================================================")
-    print(f"Training completed in {total_time/60:.2f} minutes.")
+    print(f"All 50 models trained in {total_time/60:.2f} minutes!")
     print(f"Results saved to: {args.output_csv}")
     print(f"==================================================")
 
