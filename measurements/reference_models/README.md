@@ -4,11 +4,11 @@ The fixed comparison model is a VGG-inspired CNN, not an implementation of
 the original VGG architecture. Its convolutional channel geometry is:
 
 ```text
-32 → 32 → MaxPool → 64 → 64 → MaxPool → 128
+64 → 64 → MaxPool → 128 → 128 → MaxPool → 256 → 256
 ```
 
-It has five convolutional layers, MaxPool after blocks 2 and 4, and the same
-classifier rule as the generated CNNs: `AdaptiveAvgPool2d(1) → Linear(128, 10)`.
+It has six convolutional layers, MaxPool after blocks 2 and 4, and the same
+classifier rule as the generated CNNs: `AdaptiveAvgPool2d(1) → Linear(256, 10)`.
 
 ## Create and validate the ONNX model
 

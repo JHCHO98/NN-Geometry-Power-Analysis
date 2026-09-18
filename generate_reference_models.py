@@ -1,8 +1,9 @@
 """Export the fixed VGG-inspired CNN reference model used for comparison.
 
 The convolutional geometry is deliberately explicit rather than randomly
-sampled: 32-32-Pool-64-64-Pool-128.  It uses the same FlexibleCNN classifier
-(AdaptiveAvgPool2d(1) followed by Linear(128, 10)) as the generated models.
+sampled: 64-64-Pool-128-128-Pool-256-256.  It uses the same FlexibleCNN
+classifier rule (AdaptiveAvgPool2d(1) followed by Linear(256, 10)) as the
+generated models.
 """
 
 from __future__ import annotations
@@ -18,10 +19,10 @@ from FlexibleCNN import FlexibleCNN, ModelConfig, count_parameters
 from generate_dataset import export_and_record
 
 
-REFERENCE_NAME = "vgg_inspired_32_32_64_64_128"
-CHANNELS = [32, 32, 64, 64, 128]
+REFERENCE_NAME = "vgg_inspired_64_64_128_128_256_256"
+CHANNELS = [64, 64, 128, 128, 256, 256]
 POOLS = [2, 4]
-CLASSIFIER_DESCRIPTION = "AdaptiveAvgPool2d(1)_then_Linear(128,10)"
+CLASSIFIER_DESCRIPTION = "AdaptiveAvgPool2d(1)_then_Linear(256,10)"
 
 REFERENCE_FIELDS = [
     "id",
