@@ -1,4 +1,4 @@
-"""Train selected candidate CNNs on CIFAR-10 using 100% GPU in-memory acceleration (RTX 4090)."""
+"""Train selected candidate CNNs on CIFAR-10 with 100% identical protocol to Colab training."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.cuda.amp import GradScaler, autocast
+import torchvision.transforms.v2 as v2
 
 from FlexibleCNN import FlexibleCNN, ModelConfig
 from load_data import load_data
@@ -26,23 +27,36 @@ def parse_int_sequence(value: object) -> list[int]:
     return [int(part) for part in text.split("-")]
 
 
-class PureGpuCIFAR10:
-    """Zero-CPU-bottleneck CIFAR-10 dataset residing completely in GPU VRAM."""
+class GpuCIFAR10ExactProtocol:
+    """Exact reproduction of Colab CIFAR-10 augmentation & normalization on GPU.
+    
+    Transforms (100% identical to load_data.py & train_sampled_accuracy.py):
+      - RandomCrop(32, padding=4)
+      - RandomHorizontalFlip(p=0.5)
+      - Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+    """
 
     def __init__(self, data_dict: dict, device: str = "cuda", is_train: bool = True):
         self.device = device
         self.is_train = is_train
 
         # Shape: (N, 3, 32, 32), uint8 -> float32 on GPU normalized to [0, 1]
-        raw_data = torch.from_numpy(data_dict["data"]).float().to(device) / 255.0
-
-        # Pre-normalize on GPU (Mean: 0.4914, 0.4822, 0.4465 / Std: 0.2023, 0.1994, 0.2010)
-        mean = torch.tensor([0.4914, 0.4822, 0.4465], device=device).view(1, 3, 1, 1)
-        std = torch.tensor([0.2023, 0.1994, 0.2010], device=device).view(1, 3, 1, 1)
-        self.data = (raw_data - mean) / std
-
+        self.raw_data = torch.from_numpy(data_dict["data"]).float().to(device) / 255.0
         self.labels = torch.tensor(data_dict["labels"], dtype=torch.long, device=device)
         self.num_samples = len(self.labels)
+
+        # Exact transforms using Torchvision V2 GPU-native operators
+        if is_train:
+            self.transform = torch.nn.Sequential(
+                v2.Pad(4, padding_mode="replicate"),
+                v2.RandomCrop(32),
+                v2.RandomHorizontalFlip(p=0.5),
+                v2.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2023, 0.1994, 0.2010]),
+            )
+        else:
+            self.transform = v2.Normalize(
+                mean=[0.4914, 0.4822, 0.4465], std=[0.2023, 0.1994, 0.2010]
+            )
 
     def get_batches(self, batch_size: int, shuffle: bool = True):
         if shuffle:
@@ -52,22 +66,20 @@ class PureGpuCIFAR10:
 
         for start_idx in range(0, self.num_samples, batch_size):
             batch_indices = indices[start_idx : start_idx + batch_size]
-            batch_x = self.data[batch_indices]
+            batch_x = self.raw_data[batch_indices]
             batch_y = self.labels[batch_indices]
 
-            # GPU-native random horizontal flip for training
-            if self.is_train and torch.rand(1, device=self.device).item() > 0.5:
-                batch_x = torch.flip(batch_x, dims=[3])
-
+            # Apply identical transform on GPU batch
+            batch_x = self.transform(batch_x)
             yield batch_x, batch_y
 
 
 def train_single_model(
     config: ModelConfig,
-    train_gpu_data: PureGpuCIFAR10,
-    test_gpu_data: PureGpuCIFAR10,
+    train_gpu_data: GpuCIFAR10ExactProtocol,
+    test_gpu_data: GpuCIFAR10ExactProtocol,
     epochs: int = 30,
-    batch_size: int = 256,
+    batch_size: int = 128,
     lr: float = 0.001,
     device: str = "cuda",
 ) -> dict[str, float]:
@@ -134,8 +146,8 @@ def main() -> None:
         default=Path("measurements/ml/candidate_accuracy_50_results.csv"),
     )
     parser.add_argument("--epochs", type=int, default=30)
-    parser.add_argument("--batch-size", type=int, default=256)
-    parser.add_argument("--lr", type=float, default=0.001)
+    parser.add_argument("--batch-size", type=int, default=128)  # Exact match to Colab: 128
+    parser.add_argument("--lr", type=float, default=0.001)       # Exact match to Colab: 0.001
     args = parser.parse_args()
 
     if not args.candidates_csv.exists():
@@ -146,16 +158,16 @@ def main() -> None:
     print(f"Training Environment: {device.upper()}")
     if device == "cuda":
         print(f"GPU Model: {torch.cuda.get_device_name(0)}")
+    print(f"Protocol: 100% Exact Match to Colab (RandomCrop Pad=4, HorizontalFlip, Normalize, Batch=128)")
     print(f"==================================================")
 
     df = pd.read_csv(args.candidates_csv, encoding="utf-8-sig")
     print(f"Loaded {len(df)} candidate models ({args.epochs} epochs each, batch size {args.batch_size}).")
 
-    print("Loading CIFAR-10 entirely into 24GB GPU VRAM (Zero CPU Bottleneck)...")
     train_raw, test_raw = load_data()
-    train_gpu_data = PureGpuCIFAR10(train_raw, device=device, is_train=True)
-    test_gpu_data = PureGpuCIFAR10(test_raw, device=device, is_train=False)
-    print("VRAM Data transfer completed! GPU is ready at 100% throughput.")
+    train_gpu_data = GpuCIFAR10ExactProtocol(train_raw, device=device, is_train=True)
+    test_gpu_data = GpuCIFAR10ExactProtocol(test_raw, device=device, is_train=False)
+    print("Exact protocol data loaders ready.")
 
     results = []
     total_start = time.time()
