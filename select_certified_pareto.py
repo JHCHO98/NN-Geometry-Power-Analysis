@@ -125,6 +125,7 @@ def add_diverse(
     reasons: dict[int, str],
     count: int,
     energy_mean: np.ndarray,
+    selection_eligible: np.ndarray,
 ) -> None:
     """Add structurally diverse candidates without using uncertainty."""
     energy_cut = np.quantile(energy_mean, 0.75)
@@ -132,6 +133,7 @@ def add_diverse(
     eligible = np.flatnonzero(
         (energy_mean <= energy_cut)
         & (frame["parameter_count"].to_numpy() >= param_cut)
+        & selection_eligible
     )
     eligible = np.array([index for index in eligible if int(index) not in reasons], dtype=int)
     if not count or not len(eligible):
@@ -580,11 +582,18 @@ def main() -> None:
     selected: list[int] = []
     reasons: dict[int, str] = {}
     all_indices = frame.index.to_numpy()
+    measured_mask = (
+        frame["is_measured_candidate"].fillna(False).astype(bool).to_numpy()
+        if "is_measured_candidate" in frame.columns
+        else np.zeros(len(frame), dtype=bool)
+    )
+    selection_eligible = ~measured_mask
+    eligible_indices = all_indices[selection_eligible]
 
     # 1. Mean Accuracy-Energy Pareto
     acc_mask = frame["is_mean_accuracy_energy_pareto"].to_numpy(bool)
-    acc_pareto_df = frame.loc[acc_mask].copy()
-    acc_pareto_df["_mean_sort_accuracy"] = acc_mean[acc_mask]
+    acc_pareto_df = frame.loc[acc_mask & selection_eligible].copy()
+    acc_pareto_df["_mean_sort_accuracy"] = acc_mean[acc_mask & selection_eligible]
     acc_pareto_df = acc_pareto_df.sort_values("_mean_sort_accuracy", ascending=False)
     if len(acc_pareto_df):
         positions = np.linspace(
@@ -604,7 +613,7 @@ def main() -> None:
     add_ranked(
         selected,
         reasons,
-        all_indices[np.argsort(-acc_mean)],
+        eligible_indices[np.argsort(-acc_mean[selection_eligible])],
         args.high_accuracy_count,
         "high_mean_accuracy",
     )
@@ -613,13 +622,13 @@ def main() -> None:
     add_ranked(
         selected,
         reasons,
-        all_indices[np.argsort(energy_mean)],
+        eligible_indices[np.argsort(energy_mean[selection_eligible])],
         args.low_energy_count,
         "low_mean_energy",
     )
 
     # 4. Structural diversity (still mean-only; no uncertainty involved)
-    add_diverse(frame, selected, reasons, args.diversity_count, energy_mean)
+    add_diverse(frame, selected, reasons, args.diversity_count, energy_mean, selection_eligible)
 
     # 5. Fill using mean-only balanced score
     desired = (
@@ -632,7 +641,9 @@ def main() -> None:
         add_ranked(
             selected,
             reasons,
-            all_indices[np.argsort(-frame["accuracy_energy_score"].to_numpy())],
+            eligible_indices[
+                np.argsort(-frame.loc[selection_eligible, "accuracy_energy_score"].to_numpy())
+            ],
             desired - len(selected),
             "mean_balanced_fill",
         )
@@ -653,6 +664,8 @@ def main() -> None:
 
     summary = {
         "candidate_count": len(frame),
+        "measured_anchor_count": int(measured_mask.sum()),
+        "eligible_for_next_measurement_count": int(selection_eligible.sum()),
         "selected_count": len(output),
         "pareto_basis": "mean_only",
         "uncertainty_used": False,
