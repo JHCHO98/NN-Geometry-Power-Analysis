@@ -48,7 +48,7 @@ class GpuCIFAR10ExactProtocol:
         # Exact transforms using Torchvision V2 GPU-native operators
         if is_train:
             self.transform = torch.nn.Sequential(
-                v2.Pad(4, padding_mode="replicate"),
+                v2.Pad(4, padding_mode="constant", fill=0.0),
                 v2.RandomCrop(32),
                 v2.RandomHorizontalFlip(p=0.5),
                 v2.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2023, 0.1994, 0.2010]),
