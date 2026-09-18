@@ -1,0 +1,20 @@
+{
+  "candidate_count": 50000,
+  "measured_anchor_count": 50,
+  "eligible_for_next_measurement_count": 49950,
+  "selected_count": 50,
+  "pareto_basis": "mean_only",
+  "uncertainty_used": false,
+  "accuracy_mean_column": "ensemble_accuracy_mean_percent",
+  "energy_mean_column": "ensemble_energy_mean_j",
+  "latency_mean_column": "ensemble_latency_mean_ms",
+  "mean_acc_energy_pareto_count": 47,
+  "mean_accuracy_latency_pareto_count": 47,
+  "mean_capacity_energy_pareto_count": 31,
+  "selection_reason_counts": {
+    "mean_acc_energy_pareto": 20,
+    "high_mean_accuracy": 10,
+    "low_mean_energy": 10,
+    "structural_diversity": 10
+  }
+}

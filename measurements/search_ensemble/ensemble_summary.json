@@ -1,0 +1,20 @@
+{
+  "candidate_count": 50000,
+  "measured_anchor_count": 50,
+  "method": "distance_weighted_round1_round2",
+  "numeric_distance_features": [
+    "depth",
+    "pool_count",
+    "parameter_count"
+  ],
+  "categorical_distance_features": [
+    "pattern",
+    "growth_pattern"
+  ],
+  "distance_scale": 0.5400164607384108,
+  "second_weight_floor": 0.25,
+  "second_weight_ceiling": 0.85,
+  "second_weight_min": 0.3639815846651578,
+  "second_weight_median": 0.47085496472031996,
+  "second_weight_max": 1.0
+}
