@@ -194,6 +194,37 @@ def build_dataset(
     return dataset
 
 
+def load_accuracy_measurements(paths: list[Path]) -> pd.DataFrame | None:
+    """Load and combine accuracy result files, rejecting ambiguous model IDs."""
+    frames: list[pd.DataFrame] = []
+    for path in paths:
+        if not path.exists():
+            print(f"Notice: accuracy results not found: {path}")
+            continue
+        frame = pd.read_csv(path, encoding="utf-8-sig")
+        if frame.empty:
+            print(f"Notice: accuracy results are empty: {path}")
+            continue
+        id_column = "id" if "id" in frame.columns else "model_id"
+        if id_column not in frame.columns:
+            raise ValueError(f"Accuracy results in {path} need an 'id' or 'model_id' column.")
+        frame = frame.copy()
+        frame["_accuracy_model_id"] = frame[id_column].astype(str).str.zfill(4)
+        if frame["_accuracy_model_id"].duplicated().any():
+            duplicates = frame.loc[frame["_accuracy_model_id"].duplicated(), "_accuracy_model_id"].tolist()
+            raise ValueError(f"Duplicate accuracy IDs in {path}: {duplicates}")
+        print(f"Loaded accuracy measurements from {path} ({len(frame)} models).")
+        frames.append(frame)
+
+    if not frames:
+        return None
+    combined = pd.concat(frames, ignore_index=True)
+    if combined["_accuracy_model_id"].duplicated().any():
+        duplicates = combined.loc[combined["_accuracy_model_id"].duplicated(), "_accuracy_model_id"].tolist()
+        raise ValueError(f"The accuracy result files overlap on model IDs: {duplicates}")
+    return combined
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -206,7 +237,13 @@ def parse_args() -> argparse.Namespace:
         "--accuracy-results",
         type=Path,
         default=Path("measurements/ml/accuracy_50_results.csv"),
-        help="Accuracy training results from train_sampled_accuracy.py.",
+        help="Accuracy training results for the original 50 measured models.",
+    )
+    parser.add_argument(
+        "--candidate-accuracy-results",
+        type=Path,
+        default=Path("measurements/ml/candidate_accuracy_50_results.csv"),
+        help="Accuracy training results for the 501–550 Pareto candidates.",
     )
     parser.add_argument(
         "--output-csv", type=Path, default=Path("measurements/ml/model_dataset.csv")
@@ -223,12 +260,9 @@ def main() -> None:
         raise ValueError("--image-size and --max-depth must be positive.")
     summary = pd.read_csv(args.energy_summary, encoding="utf-8-sig")
 
-    accuracy_df = None
-    if args.accuracy_results.exists():
-        accuracy_df = pd.read_csv(args.accuracy_results, encoding="utf-8-sig")
-        print(f"Loaded accuracy measurements from {args.accuracy_results} ({len(accuracy_df)} models).")
-    else:
-        print(f"Notice: {args.accuracy_results} not found. Accuracy target will be empty.")
+    accuracy_df = load_accuracy_measurements(
+        [args.accuracy_results, args.candidate_accuracy_results]
+    )
 
     dataset = build_dataset(
         summary, accuracy_df, args.image_size, args.max_depth, args.compute_missing_proxies
