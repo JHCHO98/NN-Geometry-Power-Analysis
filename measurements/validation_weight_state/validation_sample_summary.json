@@ -1,0 +1,45 @@
+{
+  "source_model_id_range": [
+    1,
+    500
+  ],
+  "source_models": 500,
+  "selected_models": 25,
+  "selection_method": "pattern x within-pattern parameter-count quantile, with depth and pool-ratio coverage balancing",
+  "parameter_bin_scope": "within each channel pattern",
+  "seed": 20260918,
+  "pattern_counts": {
+    "decreasing": 5,
+    "hourglass": 5,
+    "increasing": 5,
+    "inverse_hourglass": 5,
+    "uniform": 5
+  },
+  "parameter_bin_counts": {
+    "Q1": 5,
+    "Q2": 5,
+    "Q3": 5,
+    "Q4": 5,
+    "Q5": 5
+  },
+  "depth_counts": {
+    "2": 2,
+    "3": 5,
+    "4": 4,
+    "5": 5,
+    "6": 9
+  },
+  "pool_count_counts": {
+    "0": 5,
+    "1": 3,
+    "2": 4,
+    "3": 6,
+    "4": 4,
+    "5": 3
+  },
+  "pool_ratio_bin_counts": {
+    "high_0.68_1.00": 8,
+    "low_0_0.33": 8,
+    "mid_0.34_0.67": 9
+  }
+}

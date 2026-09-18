@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import asdict
 from pathlib import Path
 import time
 
+import onnx
 import pandas as pd
 import torch
 import torch.nn as nn
@@ -82,7 +84,7 @@ def train_single_model(
     batch_size: int = 128,
     lr: float = 0.001,
     device: str = "cuda",
-) -> dict[str, float]:
+) -> tuple[dict[str, float | int], dict[str, torch.Tensor]]:
     torch.manual_seed(config.seed)
     model = FlexibleCNN(config).to(device)
     criterion = nn.CrossEntropyLoss()
@@ -91,7 +93,9 @@ def train_single_model(
     scaler = GradScaler(enabled=(device == "cuda"))
 
     start_time = time.time()
-    best_acc = 0.0
+    best_acc = float("-inf")
+    best_epoch = 0
+    best_state: dict[str, torch.Tensor] | None = None
 
     for epoch in range(1, epochs + 1):
         model.train()
@@ -124,13 +128,89 @@ def train_single_model(
         val_loss /= total
         if val_acc > best_acc:
             best_acc = val_acc
+            best_epoch = epoch
+            best_state = {
+                name: tensor.detach().cpu().clone()
+                for name, tensor in model.state_dict().items()
+            }
+
+    if best_state is None:
+        raise RuntimeError("Training ended without a validation checkpoint.")
 
     return {
         "final_accuracy": val_acc,
         "best_accuracy": best_acc,
+        "best_epoch": best_epoch,
         "final_val_loss": val_loss,
         "train_time_sec": time.time() - start_time,
+    }, best_state
+
+
+def save_trained_artifacts(
+    config: ModelConfig,
+    model_id: str,
+    best_state: dict[str, torch.Tensor],
+    metrics: dict[str, float | int],
+    artifact_dir: Path,
+    training_settings: dict[str, float | int],
+) -> dict[str, str | int]:
+    """Save the best validation checkpoint and an equivalent static ONNX model."""
+    checkpoint_dir = artifact_dir / "checkpoints"
+    onnx_dir = artifact_dir / "onnx"
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    onnx_dir.mkdir(parents=True, exist_ok=True)
+
+    checkpoint_path = checkpoint_dir / f"{model_id}_best.pt"
+    onnx_path = onnx_dir / f"{model_id}_trained_best.onnx"
+    if checkpoint_path.exists() or onnx_path.exists():
+        raise FileExistsError(
+            "Refusing to overwrite trained artifacts for model "
+            f"{model_id}. Use a new --trained-artifact-dir or remove the complete prior run."
+        )
+
+    checkpoint = {
+        "model_id": model_id,
+        "model_config": asdict(config),
+        "model_state_dict": best_state,
+        "selection_metric": "best_accuracy",
+        "best_accuracy": metrics["best_accuracy"],
+        "best_epoch": metrics["best_epoch"],
+        "training_settings": training_settings,
     }
+    torch.save(checkpoint, checkpoint_path)
+
+    export_model = FlexibleCNN(config).cpu().eval()
+    export_model.load_state_dict(best_state)
+    dummy_input = torch.zeros(1, 3, 32, 32, dtype=torch.float32)
+    torch.onnx.export(
+        export_model,
+        dummy_input,
+        str(onnx_path),
+        input_names=["input"],
+        output_names=["output"],
+        opset_version=17,
+        do_constant_folding=True,
+        dynamo=False,
+    )
+    onnx.checker.check_model(onnx.load(str(onnx_path)))
+
+    return {
+        "trained_checkpoint_path": checkpoint_path.as_posix(),
+        "trained_onnx_path": onnx_path.as_posix(),
+        "trained_onnx_size_bytes": onnx_path.stat().st_size,
+        "checkpoint_selection_metric": "best_accuracy",
+    }
+
+
+def normalized_model_id(value: object) -> str:
+    """Return the four-digit ID shared by ONNX, checkpoints, and measurement logs."""
+    return f"{int(value):04d}"
+
+
+def write_results(results: list[dict], output_csv: Path) -> None:
+    """Persist completed rows so an interrupted long training run can resume."""
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(results).to_csv(output_csv, index=False, encoding="utf-8-sig")
 
 
 def main() -> None:
@@ -148,6 +228,20 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=30)
     parser.add_argument("--batch-size", type=int, default=128)  # Exact match to Colab: 128
     parser.add_argument("--lr", type=float, default=0.001)       # Exact match to Colab: 0.001
+    parser.add_argument(
+        "--trained-artifact-dir",
+        type=Path,
+        default=None,
+        help=(
+            "When provided, save each best-validation checkpoint and a matching trained ONNX "
+            "model under this directory. Existing artifact names are never overwritten."
+        ),
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Reuse completed model IDs already present in --output-csv.",
+    )
     args = parser.parse_args()
 
     if not args.candidates_csv.exists():
@@ -162,6 +256,8 @@ def main() -> None:
     print(f"==================================================")
 
     df = pd.read_csv(args.candidates_csv, encoding="utf-8-sig")
+    if "id" not in df.columns:
+        raise ValueError("Candidate CSV must contain an 'id' column from dataset_structure.csv.")
     print(f"Loaded {len(df)} candidate models ({args.epochs} epochs each, batch size {args.batch_size}).")
 
     train_raw, test_raw = load_data()
@@ -169,13 +265,24 @@ def main() -> None:
     test_gpu_data = GpuCIFAR10ExactProtocol(test_raw, device=device, is_train=False)
     print("Exact protocol data loaders ready.")
 
-    results = []
+    results: list[dict] = []
+    completed_ids: set[str] = set()
+    if args.resume and args.output_csv.exists():
+        existing = pd.read_csv(args.output_csv, encoding="utf-8-sig")
+        if "id" not in existing.columns:
+            raise ValueError(f"Cannot resume: {args.output_csv} has no 'id' column.")
+        results = existing.to_dict("records")
+        completed_ids = {normalized_model_id(value) for value in existing["id"]}
+        print(f"Resuming: keeping {len(completed_ids)} completed result rows.")
     total_start = time.time()
 
     for idx, row in df.iterrows():
-        id_str = str(row["id"])
-        cand_id = str(row["candidate_id"])
-        reason = str(row["selection_reason"])
+        id_str = normalized_model_id(row["id"])
+        if id_str in completed_ids:
+            print(f"[{idx+1:02d}/{len(df)}] Model {id_str} already completed; skipping.")
+            continue
+        cand_id = str(row.get("candidate_id", id_str))
+        reason = str(row.get("selection_reason", "accuracy_training"))
         cfg = ModelConfig(
             depth=int(row["depth"]),
             channels=parse_int_sequence(row["channels"]),
@@ -190,7 +297,7 @@ def main() -> None:
         )
 
         print(f"[{idx+1:02d}/{len(df)}] Model {id_str} ({cand_id}, {reason}, Params: {cfg.parameter_count:,})...", end=" ", flush=True)
-        metrics = train_single_model(
+        metrics, best_state = train_single_model(
             cfg,
             train_gpu_data,
             test_gpu_data,
@@ -202,16 +309,33 @@ def main() -> None:
         print(f"Acc: {metrics['best_accuracy']:.2f}% ({metrics['train_time_sec']:.1f}s)")
 
         res_row = row.to_dict()
+        res_row["id"] = id_str
         res_row.update(metrics)
+        if args.trained_artifact_dir is not None:
+            artifact_fields = save_trained_artifacts(
+                cfg,
+                id_str,
+                best_state,
+                metrics,
+                args.trained_artifact_dir,
+                {
+                    "epochs": args.epochs,
+                    "batch_size": args.batch_size,
+                    "learning_rate": args.lr,
+                    "weight_decay": 1e-4,
+                    "protocol_version": 1,
+                },
+            )
+            res_row.update(artifact_fields)
+            print(f"  Saved checkpoint and trained ONNX for {id_str}.")
         results.append(res_row)
+        write_results(results, args.output_csv)
 
     total_time = time.time() - total_start
-    res_df = pd.DataFrame(results)
-    args.output_csv.parent.mkdir(parents=True, exist_ok=True)
-    res_df.to_csv(args.output_csv, index=False, encoding="utf-8-sig")
+    write_results(results, args.output_csv)
 
     print(f"\n==================================================")
-    print(f"All 50 models trained in {total_time/60:.2f} minutes!")
+    print(f"Training run completed in {total_time/60:.2f} minutes.")
     print(f"Results saved to: {args.output_csv}")
     print(f"==================================================")
 

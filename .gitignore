@@ -5,6 +5,8 @@
 data_cache/
 data/
 checkpoints/
+measurements/validation_weight_state/checkpoints/
+measurements/validation_weight_state/onnx_untrained/
 data_cifar10/
 models/
 !emissions.csv
