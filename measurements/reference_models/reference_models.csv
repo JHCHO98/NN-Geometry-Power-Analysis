@@ -1,0 +1,2 @@
+﻿id,candidate_id,reference_name,architecture_family,selection_reason,seed,depth,pattern,growth_pattern,noise_ratio,min_channels,max_channels,channels,pools,parameter_count,classifier,onnx_path,onnx_size_bytes,created_at_utc
+0551,vgg_inspired_32_32_64_64_128,vgg_inspired_32_32_64_64_128,VGG-inspired,fixed_reference_baseline,20260918,5,increasing,linear,0.0,32,128,32-32-64-64-128,2-4,140714,"AdaptiveAvgPool2d(1)_then_Linear(128,10)",model_onnx/0551.onnx,565863,2026-09-18T09:52:55.960928+00:00
