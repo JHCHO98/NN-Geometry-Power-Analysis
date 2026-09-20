@@ -59,6 +59,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--candidate-id", default="C002793")
     parser.add_argument("--output-dir", type=Path, default=Path("measurements/headline_comparison"))
     parser.add_argument("--training-run-id", default="headline_cifar10_v1")
+    parser.add_argument(
+        "--headline-training-results",
+        type=Path,
+        default=Path("measurements/headline_comparison/headline_training_results.csv"),
+        help="Optional result CSV from train_candidate_accuracy.py; overrides older recorded accuracies.",
+    )
     parser.add_argument("--require-artifacts", action="store_true")
     return parser.parse_args()
 
@@ -104,6 +110,28 @@ def main() -> None:
         model["trained_onnx_path"] = str(trained_dir / f"{model_id}_trained_best.onnx")
         model["trained_checkpoint_path"] = str(checkpoint_dir / f"{model_id}_best.pt")
         model["trained_onnx_available"] = str(Path(str(model["trained_onnx_path"])).is_file()).lower()
+    if args.headline_training_results.is_file():
+        training_rows = {
+            str(row["id"]).zfill(4): row
+            for row in read_rows(args.headline_training_results)
+            if row.get("id")
+        }
+        required_ids = {str(model["structure_id"]) for model in models}
+        missing = sorted(required_ids - set(training_rows))
+        if missing:
+            raise ValueError(
+                "Headline training results are incomplete; missing IDs: " + ", ".join(missing)
+            )
+        for model in models:
+            training = training_rows[str(model["structure_id"])]
+            model["actual_accuracy_percent"] = training.get("best_accuracy", "")
+            model["trained_onnx_path"] = training.get("trained_onnx_path", model["trained_onnx_path"])
+            model["trained_checkpoint_path"] = training.get(
+                "trained_checkpoint_path", model["trained_checkpoint_path"]
+            )
+            model["trained_onnx_available"] = str(
+                Path(str(model["trained_onnx_path"])).is_file()
+            ).lower()
     if args.require_artifacts and not all(model["trained_onnx_available"] == "true" for model in models):
         raise FileNotFoundError("Both trained headline ONNX files must be present under " + str(trained_dir))
 
