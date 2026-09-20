@@ -38,14 +38,33 @@ RESULT_FIELDS = [
     "high_priority_applied",
     "started_at_local",
     "finished_at_local",
+    # Optional fields are deliberately part of the common schema so special
+    # protocols (for example trained/untrained paired validation) remain
+    # analyzable without changing the ordinary production benchmark path.
+    "benchmark_session_id",
+    "pair_id",
+    "structure_id",
+    "weight_state",
+    "training_run_id",
+    "protocol_id",
+    "run_order",
+    "pair_trial",
+    "idle_role",
 ]
 
 
 def append_result(csv_path: Path, row: dict[str, object]) -> None:
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     write_header = not csv_path.exists() or csv_path.stat().st_size == 0
+    fieldnames = RESULT_FIELDS
+    if not write_header:
+        # Continue to support pre-metadata production CSVs.  Extra paired-run
+        # fields are ignored only for those legacy files rather than producing
+        # a malformed row with more columns than its header.
+        with csv_path.open("r", encoding="utf-8-sig", newline="") as file:
+            fieldnames = next(csv.reader(file), RESULT_FIELDS)
     with csv_path.open("a", encoding="utf-8", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=RESULT_FIELDS)
+        writer = csv.DictWriter(file, fieldnames=fieldnames, extrasaction="ignore")
         if write_header:
             writer.writeheader()
         writer.writerow(row)
@@ -181,6 +200,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--cpu-core", type=int)
     parser.add_argument("--high-priority", action="store_true")
     parser.add_argument("--result-csv", type=Path, default=Path("pilot_benchmark_runs.csv"))
+    parser.add_argument("--benchmark-session-id", default="")
+    parser.add_argument("--pair-id", default="")
+    parser.add_argument("--structure-id", default="")
+    parser.add_argument("--weight-state", default="")
+    parser.add_argument("--training-run-id", default="")
+    parser.add_argument("--protocol-id", default="")
     return parser.parse_args()
 
 
@@ -244,6 +269,15 @@ def main() -> None:
                 "high_priority_applied": high_priority_applied,
                 "started_at_local": started_at.isoformat(),
                 "finished_at_local": finished_at.isoformat(),
+                "benchmark_session_id": args.benchmark_session_id,
+                "pair_id": args.pair_id,
+                "structure_id": args.structure_id,
+                "weight_state": args.weight_state,
+                "training_run_id": args.training_run_id,
+                "protocol_id": args.protocol_id,
+                "run_order": trial,
+                "pair_trial": trial if args.mode == "inference" else "",
+                "idle_role": "manual_idle" if args.mode == "idle" else "",
             },
         )
         print(

@@ -37,10 +37,25 @@ TRIAL_FIELDS = [
     "channels",
     "pools",
     "parameter_count",
+    "benchmark_session_id",
+    "pair_id",
+    "structure_id",
+    "weight_state",
+    "training_run_id",
+    "protocol_id",
+    "run_order",
+    "pair_trial",
+    "idle_role",
     "status",
 ]
 SUMMARY_FIELDS = [
     "model_id",
+    "benchmark_session_id",
+    "pair_id",
+    "structure_id",
+    "weight_state",
+    "training_run_id",
+    "protocol_id",
     "valid_trials",
     "mean_net_energy_per_inference_j",
     "std_net_energy_per_inference_j",
@@ -68,6 +83,20 @@ class Trial:
     inference_count: int
     average_latency_ms: float | None
     throughput: float | None
+    metadata: dict[str, str]
+
+
+METADATA_FIELDS = (
+    "benchmark_session_id",
+    "pair_id",
+    "structure_id",
+    "weight_state",
+    "training_run_id",
+    "protocol_id",
+    "run_order",
+    "pair_trial",
+    "idle_role",
+)
 
 
 def canonical_model_id(value: str) -> str:
@@ -170,6 +199,7 @@ def parse_trials(path: Path) -> list[Trial]:
                     inference_count=int(row["inference_count"]),
                     average_latency_ms=float(row["average_latency_ms"]) if row.get("average_latency_ms") else None,
                     throughput=float(row["throughput_inferences_per_sec"]) if row.get("throughput_inferences_per_sec") else None,
+                    metadata={field: row.get(field, "") for field in METADATA_FIELDS},
                 )
             )
         except (TypeError, ValueError) as error:
@@ -218,16 +248,30 @@ def read_existing_trials(path: Path) -> list[dict[str, str]]:
         return []
     with path.open("r", encoding="utf-8-sig", newline="") as file:
         reader = csv.DictReader(file)
-        if reader.fieldnames is None or not set(TRIAL_FIELDS).issubset(reader.fieldnames):
+        legacy_required = set(TRIAL_FIELDS) - set(METADATA_FIELDS)
+        if reader.fieldnames is None or not legacy_required.issubset(reader.fieldnames):
             raise ValueError(f"Existing trial output has an incompatible schema: {path}")
-        return list(reader)
+        return [
+            {field: row.get(field, "") for field in TRIAL_FIELDS}
+            for row in reader
+        ]
 
 
 def trial_identity(row: dict[str, object]) -> tuple[str, ...]:
     """Return fields that identify one measured interval across analysis runs."""
     return tuple(
         str(row.get(field, ""))
-        for field in ("mode", "model_id", "trial", "started_at_local", "finished_at_local")
+        for field in (
+            "mode",
+            "model_id",
+            "benchmark_session_id",
+            "pair_id",
+            "weight_state",
+            "pair_trial",
+            "trial",
+            "started_at_local",
+            "finished_at_local",
+        )
     )
 
 
@@ -246,11 +290,13 @@ def append_unique_trials(
 def build_summaries(rows: list[dict[str, object]]) -> list[dict[str, object]]:
     """Aggregate all valid inference trials currently stored in the output."""
     summaries: list[dict[str, object]] = []
-    by_model: dict[str, list[dict[str, object]]] = {}
+    by_model: dict[tuple[str, ...], list[dict[str, object]]] = {}
     for row in rows:
         if row["mode"] == "inference" and row["status"] == "valid" and row["net_energy_per_inference_j"] != "":
-            by_model.setdefault(str(row["model_id"]), []).append(row)
-    for model_id, model_rows in sorted(by_model.items()):
+            key = tuple(str(row.get(field, "")) for field in ("model_id", "benchmark_session_id", "pair_id", "weight_state"))
+            by_model.setdefault(key, []).append(row)
+    for key, model_rows in sorted(by_model.items()):
+        model_id, benchmark_session_id, pair_id, weight_state = key
         net_values = [float(row["net_energy_per_inference_j"]) for row in model_rows]
         latency_values = [float(row["average_latency_ms"]) for row in model_rows if row["average_latency_ms"] != ""]
         throughput_values = [float(row["throughput_inferences_per_sec"]) for row in model_rows if row["throughput_inferences_per_sec"] != ""]
@@ -260,6 +306,12 @@ def build_summaries(rows: list[dict[str, object]]) -> list[dict[str, object]]:
         summaries.append(
             {
                 "model_id": model_id,
+                "benchmark_session_id": benchmark_session_id,
+                "pair_id": pair_id,
+                "structure_id": exemplar.get("structure_id", ""),
+                "weight_state": weight_state,
+                "training_run_id": exemplar.get("training_run_id", ""),
+                "protocol_id": exemplar.get("protocol_id", ""),
                 "valid_trials": len(model_rows),
                 "mean_net_energy_per_inference_j": net_mean,
                 "std_net_energy_per_inference_j": net_std,
@@ -393,7 +445,9 @@ def main() -> None:
             "net_energy_per_inference_j": "",
             "status": "",
         }
-        structure = structures.get(trial.model_id, {})
+        row.update(trial.metadata)
+        structure_id = canonical_model_id(trial.metadata.get("structure_id", "") or trial.model_id)
+        structure = structures.get(structure_id, {})
         for field in ("depth", "pattern", "growth_pattern", "channels", "pools", "parameter_count"):
             row[field] = structure.get(field, "")
         try:

@@ -97,6 +97,7 @@ def engineering_features(
 def build_dataset(
     summary: pd.DataFrame,
     accuracy_df: pd.DataFrame | None,
+    structure_proxy_lookup: dict[str, dict[str, float]],
     image_size: int,
     max_depth: int,
     compute_missing_proxies: bool = False,
@@ -148,12 +149,23 @@ def build_dataset(
             "feature_growth_pattern": str(source_row["growth_pattern"]),
         }
 
-        # Add zero-cost proxy features and target accuracy if available
+        # Add target accuracy from the structures that were trained.
         acc_info = accuracy_lookup.get(model_id, {})
-        synflow = acc_info.get("synflow_score", np.nan)
-        grad_norm = acc_info.get("grad_norm_score", np.nan)
-        jacob_cov = acc_info.get("jacob_cov_score", np.nan)
         target_acc = acc_info.get("target_accuracy_percent", np.nan)
+
+        # The structure CSV contains the complete, reproducible proxy table
+        # for all measured models. It supersedes historical accuracy CSV proxy
+        # fields, which are populated for only a subset of rows.
+        structure_proxy_info = structure_proxy_lookup.get(model_id, {})
+        synflow = structure_proxy_info.get(
+            "feature_synflow_score", acc_info.get("synflow_score", np.nan)
+        )
+        grad_norm = structure_proxy_info.get(
+            "feature_grad_norm_score", acc_info.get("grad_norm_score", np.nan)
+        )
+        jacob_cov = structure_proxy_info.get(
+            "feature_jacob_cov_score", acc_info.get("jacob_cov_score", np.nan)
+        )
 
         if compute_missing_proxies and (np.isnan(synflow) or np.isnan(grad_norm) or np.isnan(jacob_cov)):
             import torch
@@ -225,6 +237,42 @@ def load_accuracy_measurements(paths: list[Path]) -> pd.DataFrame | None:
     return combined
 
 
+def load_structure_proxy_lookup(path: Path) -> dict[str, dict[str, float]]:
+    """Load zero-cost proxy features keyed by the reproducible structure ID."""
+    if not path.exists():
+        print(f"Notice: structure proxy CSV not found: {path}")
+        return {}
+
+    frame = pd.read_csv(path, encoding="utf-8-sig")
+    proxy_columns = [
+        "feature_synflow_score",
+        "feature_grad_norm_score",
+        "feature_jacob_cov_score",
+    ]
+    required = {"id", *proxy_columns}
+    missing = required.difference(frame.columns)
+    if missing:
+        print(f"Notice: structure proxy CSV lacks columns: {sorted(missing)}")
+        return {}
+
+    frame = frame.copy()
+    frame["_model_id"] = frame["id"].astype(str).str.zfill(4)
+    if frame["_model_id"].duplicated().any():
+        duplicates = frame.loc[frame["_model_id"].duplicated(), "_model_id"].tolist()
+        raise ValueError(f"Duplicate structure IDs in {path}: {duplicates}")
+
+    lookup: dict[str, dict[str, float]] = {}
+    for _, row in frame.iterrows():
+        lookup[str(row["_model_id"])] = {
+            column: float(row[column])
+            for column in proxy_columns
+            if pd.notna(row[column])
+        }
+    complete = sum(len(values) == len(proxy_columns) for values in lookup.values())
+    print(f"Loaded structure proxy scores from {path} ({complete}/{len(lookup)} complete models).")
+    return lookup
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -246,6 +294,12 @@ def parse_args() -> argparse.Namespace:
         help="Accuracy training results for the 501–550 Pareto candidates.",
     )
     parser.add_argument(
+        "--structure-proxy-csv",
+        type=Path,
+        default=Path("dataset_structure.csv"),
+        help="Structure CSV containing feature_* zero-cost proxy columns.",
+    )
+    parser.add_argument(
         "--output-csv", type=Path, default=Path("measurements/ml/model_dataset.csv")
     )
     parser.add_argument("--image-size", type=int, default=32)
@@ -263,15 +317,30 @@ def main() -> None:
     accuracy_df = load_accuracy_measurements(
         [args.accuracy_results, args.candidate_accuracy_results]
     )
+    structure_proxy_lookup = load_structure_proxy_lookup(args.structure_proxy_csv)
 
     dataset = build_dataset(
-        summary, accuracy_df, args.image_size, args.max_depth, args.compute_missing_proxies
+        summary,
+        accuracy_df,
+        structure_proxy_lookup,
+        args.image_size,
+        args.max_depth,
+        args.compute_missing_proxies,
     )
     args.output_csv.parent.mkdir(parents=True, exist_ok=True)
     dataset.to_csv(args.output_csv, index=False, encoding="utf-8")
     
     n_acc = dataset["target_accuracy_percent"].notna().sum()
-    print(f"Wrote {args.output_csv} with {len(dataset)} models ({n_acc} with accuracy targets) and {len(dataset.columns)} columns.")
+    proxy_columns = [
+        "feature_synflow_score",
+        "feature_grad_norm_score",
+        "feature_jacob_cov_score",
+    ]
+    complete_proxy_count = int(dataset[proxy_columns].notna().all(axis=1).sum())
+    print(
+        f"Wrote {args.output_csv} with {len(dataset)} models ({n_acc} with accuracy targets, "
+        f"{complete_proxy_count} with all proxy scores) and {len(dataset.columns)} columns."
+    )
 
 
 if __name__ == "__main__":
