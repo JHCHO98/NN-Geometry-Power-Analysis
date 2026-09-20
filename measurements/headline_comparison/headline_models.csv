@@ -1,3 +1,3 @@
 role,structure_id,candidate_id,display_name,parameter_count,actual_accuracy_percent,untrained_onnx_path,trained_onnx_path,trained_checkpoint_path,trained_onnx_available
-reference,0551,vgg_inspired_64_64_128_128_256_256,VGG-inspired reference 0551,1147978,85.61,model_onnx/0551.onnx,measurements\headline_comparison\onnx\0551_trained_best.onnx,measurements\headline_comparison\checkpoints\0551_best.pt,false
-pareto,0530,C002793,Final Pareto candidate C002793,1178481,86.16,model_onnx/0530.onnx,measurements\headline_comparison\onnx\0530_trained_best.onnx,measurements\headline_comparison\checkpoints\0530_best.pt,false
+reference,0551,vgg_inspired_64_64_128_128_256_256,VGG-inspired reference 0551,1147978,86.16,model_onnx/0551.onnx,measurements/headline_comparison/onnx/0551_trained_best.onnx,measurements/headline_comparison/checkpoints/0551_best.pt,true
+pareto,0530,C002793,Final Pareto candidate C002793,1178481,86.05,model_onnx/0530.onnx,measurements/headline_comparison/onnx/0530_trained_best.onnx,measurements/headline_comparison/checkpoints/0530_best.pt,true
