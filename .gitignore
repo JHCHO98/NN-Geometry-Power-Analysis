@@ -16,3 +16,5 @@ models/
 *.data
 temp.py
 AGENTS.md
+paper/
+tmp/

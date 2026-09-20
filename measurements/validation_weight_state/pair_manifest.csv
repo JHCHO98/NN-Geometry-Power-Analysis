@@ -50,6 +50,6 @@ wsval_0465,0465,trained_best_accuracy,cifar10_trained_validation_v1,measurements
 wsval_0474,0474,untrained_seed_reconstructed,,measurements/validation_weight_state/onnx_untrained/0474_untrained.onnx,,,true
 wsval_0474,0474,trained_best_accuracy,cifar10_trained_validation_v1,measurements/validation_weight_state/onnx/0474_trained_best.onnx,measurements/validation_weight_state/checkpoints/0474_best.pt,70.2,true
 wsval_0551,0551,untrained_seed_reconstructed,,model_onnx/0551.onnx,,,true
-wsval_0551,0551,trained_best_accuracy,cifar10_trained_validation_v1,measurements\headline_comparison\onnx\0551_trained_best.onnx,measurements\headline_comparison\checkpoints\0551_best.pt,85.61,false
+wsval_0551,0551,trained_best_accuracy,cifar10_trained_validation_v1,measurements/headline_comparison/onnx/0551_trained_best.onnx,measurements/headline_comparison/checkpoints/0551_best.pt,86.16,false
 wsval_0530,0530,untrained_seed_reconstructed,,model_onnx/0530.onnx,,,true
-wsval_0530,0530,trained_best_accuracy,cifar10_trained_validation_v1,measurements\headline_comparison\onnx\0530_trained_best.onnx,measurements\headline_comparison\checkpoints\0530_best.pt,86.16,false
+wsval_0530,0530,trained_best_accuracy,cifar10_trained_validation_v1,measurements/headline_comparison/onnx/0530_trained_best.onnx,measurements/headline_comparison/checkpoints/0530_best.pt,86.05,false
