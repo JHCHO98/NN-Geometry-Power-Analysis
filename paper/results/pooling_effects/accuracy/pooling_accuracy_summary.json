@@ -1,0 +1,28 @@
+{
+  "primary_pool_count": {
+    "n_observations": 100.0,
+    "n_parameters": 13.0,
+    "degrees_freedom": 87.0,
+    "r_squared": 0.9198528332739518,
+    "adjusted_r_squared": 0.9087980516565659,
+    "pooling_feature": "feature_pool_count",
+    "coefficient_percentage_points_per_unit": 1.2044701507579152,
+    "ci95_lower_percentage_points": 0.7553758798747285,
+    "ci95_upper_percentage_points": 1.6535644216411018,
+    "p_value_hc3": 7.616774850369647e-07,
+    "significant_at_0_05": true
+  },
+  "sensitivity_pool_ratio": {
+    "n_observations": 100.0,
+    "n_parameters": 13.0,
+    "degrees_freedom": 87.0,
+    "r_squared": 0.9313552674234701,
+    "adjusted_r_squared": 0.921887028447397,
+    "pooling_feature": "feature_pool_ratio",
+    "coefficient_percentage_points_per_unit": 6.969888405032108,
+    "ci95_lower_percentage_points": 4.5956626646589935,
+    "ci95_upper_percentage_points": 9.344114145405223,
+    "p_value_hc3": 9.023628824067026e-08,
+    "significant_at_0_05": true
+  }
+}
