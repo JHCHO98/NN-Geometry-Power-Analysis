@@ -1,0 +1,3 @@
+role,structure_id,parameter_count,actual_accuracy_percent,valid_trials,mean_energy_mj,std_energy_mj,mean_latency_ms,std_latency_ms,energy_change_vs_reference_percent,latency_change_vs_reference_percent
+reference,0551,1147978,86.16,4,30.518355224657068,5.963870193202514,2.375270311282658,0.10806978004070517,0.0,0.0
+pareto,0530,1178481,86.05,4,14.578648967026725,3.786803236377251,1.0980919843239014,0.0735712359345253,-52.229899482761056,-53.769809730374384
