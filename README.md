@@ -1,52 +1,112 @@
 # NN Geometry Power Analysis
 
-저전력 엣지 컴퓨팅 환경에서 **CNN 계층 구조의 기하학적 형상**(깊이, 각 계층의 채널 폭 배치, 풀링 위치)이 추론 정확도와 에너지 효율에 어떤 영향을 주는지 분석하는 연구입니다.
+This repository investigates how CNN geometry affects CPU inference energy on
+edge-oriented hardware. Rather than treating parameter count as the only model
+cost, the study varies convolutional depth, channel distribution, and pooling
+placement, then measures their relationships with inference energy, latency,
+and CIFAR-10 accuracy.
 
-같은 모델 규모라도 채널을 어떻게 배치하느냐에 따라 CPU 추론 시간과 소비 에너지가 달라질 수 있다는 가설을 검증합니다. CIFAR-10 분류용 CNN을 학습하고, ONNX 및 CodeCarbon 기반의 CPU 측정으로 구조별 결과를 기록·비교합니다.
+## Study overview
 
-## 진행 현황
+- **Architecture space:** generated CNNs using 3 x 3 convolutions and a fixed
+  classifier structure; depth, channel pattern, and pooling geometry vary.
+- **Measurement:** ONNX Runtime CPU inference is benchmarked while HWiNFO logs
+  CPU Package Power. `analyze_energy.py` subtracts an idle baseline to report
+  net energy per inference in joules and latency in milliseconds.
+- **Surrogates and search:** XGBoost models predict Energy, Latency, and
+  Accuracy, allowing 50,000 valid CNN candidates to be screened with an
+  Energy-Accuracy Pareto criterion.
+- **Validation:** paired trained/untrained ONNX benchmarks assess whether the
+  large untrained measurement set preserves relative structural cost.
 
-- 깊고 좁은형, 얕고 넓은형, 균일형, 모래시계형 등 6개 CNN을 CIFAR-10에서 50 epoch 학습했습니다.
-- 기존 6개 모델의 최종 정확도는 약 **81.37%~84.36%**입니다.
-- CPU에서 전체 모델과 개별 계층의 추론 시간·에너지를 측정하고, 그래프로 비교하는 환경을 구성했습니다.
-- 현재는 매개변수 수, 깊이, 풀링 위치를 통제한 다양한 구조를 자동 생성하여 정확도-에너지 관계를 더 넓게 분석하는 단계입니다.
+The current dataset contains energy and latency measurements for 550 CNN
+architectures and CIFAR-10 accuracy labels for 100 architectures. Paper-ready
+figures, manuscripts, and frozen analysis results are maintained in `paper/`.
 
-## 파일 구조
+## Repository layout
 
 ```text
-NN-Geometry-Power-Analysis/
-├── FlexibleCNN.py             # CNN 구조 생성, 채널 형상·풀링 위치 설정
-├── generate_dataset.py        # 무작위 CNN을 생성하고 ONNX 및 구조 메타데이터로 저장
-├── load_data.py               # CIFAR-10 다운로드·변환 및 PyTorch DataLoader 제공
-├── RunCNN.py                  # 6개 기준 CNN의 CPU 추론 에너지 측정
-├── run_onnx.py                # ONNX Runtime의 단일 모델 추론 지연 시간 측정
-├── verify_onnx.py             # PyTorch와 ONNX 모델의 정확도·출력 일치 여부 확인
-├── Analyze.py                 # 에너지 로그를 정규화하고 비교 그래프 생성
-├── dataset_structure.csv      # 자동 생성 모델의 구조·매개변수·ONNX 메타데이터
-├── nn_geometry_power_log.csv  # 모델 및 계층별 시간·에너지 측정 로그
-├── emissions.csv              # CodeCarbon이 기록한 배출량·에너지 원본 로그
-├── train_result.txt           # 기준 CNN 학습 과정과 정확도 기록
-├── model_onnx/                # 생성·내보낸 ONNX 모델 파일
-├── data_cifar10/              # 변환된 CIFAR-10 데이터 캐시
-├── data_cache/                # CIFAR-10 원본 다운로드·압축 해제 캐시
-└── plots/                     # 구조별 에너지 비교 및 계층별 흐름 그래프
+FlexibleCNN.py                  CNN architecture definition
+generate_dataset.py             Generate CNN metadata and ONNX models
+benchmark_onnx.py               ONNX Runtime inference benchmark
+run_production_benchmark.bat    Windows production measurement batch
+analyze_energy.py               Integrate HWiNFO logs into net-energy trials
+
+prepare_xgboost_dataset.py      Build the surrogate-training dataset
+train_xgboost_models.py         Train Energy, Latency, and Accuracy surrogates
+predict_candidates.py           Score generated search candidates
+prepare_second_search.py        Combine predictions with known measurements
+select_certified_pareto.py      Select mean Energy-Accuracy Pareto candidates
+serve_pareto_explorer.py        Serve the local interactive Pareto explorer
+
+measurements/                   Raw logs, processed trials, ML, and searches
+paper/                          Manuscripts, final figures, tables, and scripts
+model_onnx/                     Generated ONNX models (not versioned)
 ```
 
-## 핵심 구성 요소
+## Core workflow
 
-- `FlexibleCNN.py`: 증가형·감소형·균일형·모래시계형·역모래시계형 채널 폭 패턴을 만들고, 모델별 구조 정보를 `ModelConfig`로 관리합니다.
-- `generate_dataset.py`: 구조, 깊이, 채널 수, 풀링 위치, 매개변수 수를 무작위로 조합한 CNN을 ONNX로 내보내고 `dataset_structure.csv`에 재현 가능한 기록을 남깁니다.
-- `RunCNN.py`: CodeCarbon을 사용해 CPU에서 반복 추론할 때의 전체 모델 및 개별 계층 에너지 사용량을 측정합니다.
-- `Analyze.py`: 측정값을 추론 1회당 에너지(J), 평균 전력(W)으로 변환하고 구조별 비교 그래프를 생성합니다.
+Use the project virtual environment on Windows. Start HWiNFO logging before a
+production benchmark and keep the measurement environment fixed.
 
-## 분석 목표
+```powershell
+# 1. Generate models and measure an ID range.
+.\.venv\Scripts\python.exe generate_dataset.py --count 10
+.\run_production_benchmark.bat 1 10
 
-구조별 정확도, 추론 지연 시간, 추론 1회당 에너지를 함께 비교하여 정확도-에너지 Pareto 전선을 찾고, 자원이 제한된 기기에서도 활용할 수 있는 효율적인 CNN 계층 폭 배치 원칙을 제안하는 것이 목표입니다.
+# 2. Convert a HWiNFO log plus the benchmark run CSV into cumulative trials.
+.\.venv\Scripts\python.exe analyze_energy.py `
+  --hwinfolog measurements\raw_hwinf\production_1_10.csv `
+  --benchmark-csv measurements\benchmark_runs\production_runs_1_10.csv
 
-## 주요 사용 도구
+# 3. Prepare labels and train the surrogate models.
+.\.venv\Scripts\python.exe prepare_xgboost_dataset.py
+.\.venv\Scripts\python.exe train_xgboost_models.py
+```
 
-Python, PyTorch, torchvision, ONNX/ONNX Runtime, CodeCarbon, pandas, matplotlib, seaborn
+`analyze_energy.py` appends only new trial identities to processed outputs; do
+not delete raw logs merely to force a rerun.
 
-## 라이선스
+## Second-round Pareto search
 
-이 프로젝트는 [MIT License](LICENSE)를 따릅니다.
+The current final-search artifacts are isolated in `measurements/search_2nd/`.
+
+```powershell
+.\.venv\Scripts\python.exe predict_candidates.py `
+  --output-csv measurements\search_2nd\candidate_predictions_raw.csv `
+  --overwrite
+.\.venv\Scripts\python.exe prepare_second_search.py
+.\.venv\Scripts\python.exe select_certified_pareto.py `
+  --predictions measurements\search_2nd\candidate_predictions.csv `
+  --output-csv measurements\search_2nd\next_measurement_candidates.csv `
+  --summary-json measurements\search_2nd\selection_summary.json `
+  --output-html measurements\search_2nd\pareto_structures.html `
+  --overwrite
+```
+
+Open the interactive explorer locally:
+
+```powershell
+.\.venv\Scripts\python.exe serve_pareto_explorer.py `
+  --search-dir measurements\search_2nd `
+  --predictions measurements\search_2nd\candidate_predictions.csv
+```
+
+## Current headline results
+
+With the final trained ONNX comparison protocol (four trials per model), the
+selected candidate C002793/0530 used 2.66% more parameters than the
+VGG-inspired reference 0551 but reduced CPU inference energy by **52.23%**
+and latency by **53.77%**, with an accuracy change of **-0.11 percentage
+points**. See `measurements/headline_comparison/analysis/` and `paper/` for
+the underlying summaries and publication figures.
+
+## Reproducibility notes
+
+- Preserve HWiNFO raw logs and benchmark CSVs. They are the source of all
+  energy calculations.
+- Keep power mode, CPU affinity, HWiNFO sensor configuration, warm-up,
+  cooldown, and idle-baseline procedures consistent across sessions.
+- Generated ONNX files, virtual environments, caches, and large raw logs are
+  intentionally excluded from version control.
+- Run `git diff --check` after code or documentation changes.
